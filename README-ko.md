@@ -20,10 +20,10 @@ docker run -d \
   --name sship \
   -p 8080:8080 \
   -v ./sship.yaml:/app/config/sship.yaml \
-  [dockerhub-username]/sship:latest
+  lambda0x63/sship:latest
 
 # 또는 Docker Compose 사용
-curl -O https://raw.githubusercontent.com/[github-username]/sship/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/lambda0x63/sship/main/docker-compose.yml
 docker-compose up -d
 ```
 
@@ -31,7 +31,7 @@ docker-compose up -d
 
 ```bash
 # tap 추가 (최초 1회만)
-brew tap [github-username]/tap
+brew tap lambda0x63/tap
 
 # 설치
 brew install sship
@@ -42,7 +42,7 @@ sship
 
 ### 방법 3: 사전 빌드된 바이너리 다운로드
 
-[GitHub Releases](https://github.com/[github-username]/sship/releases/latest)에서 최신 버전을 다운로드하세요.
+[GitHub Releases](https://github.com/lambda0x63/sship/releases/latest)에서 최신 버전을 다운로드하세요.
 
 **Windows:**
 1. `sship-windows-amd64.zip` 다운로드
@@ -75,7 +75,7 @@ chmod +x sship-linux-amd64
 ### 방법 4: 소스 코드에서 빌드
 
 ```bash
-git clone https://github.com/[github-username]/sship.git
+git clone https://github.com/lambda0x63/sship.git
 cd sship
 make build  # 현재 플랫폼용 빌드
 # 또는

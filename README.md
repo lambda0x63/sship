@@ -20,10 +20,10 @@ docker run -d \
   --name sship \
   -p 8080:8080 \
   -v ./sship.yaml:/app/config/sship.yaml \
-  [dockerhub-username]/sship:latest
+  lambda0x63/sship:latest
 
 # Or using Docker Compose
-curl -O https://raw.githubusercontent.com/[github-username]/sship/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/lambda0x63/sship/main/docker-compose.yml
 docker-compose up -d
 ```
 
@@ -31,7 +31,7 @@ docker-compose up -d
 
 ```bash
 # Add tap (one time only)
-brew tap [github-username]/tap
+brew tap lambda0x63/tap
 
 # Install
 brew install sship
@@ -42,7 +42,7 @@ sship
 
 ### Option 3: Download Pre-built Binary
 
-Download the latest release from [GitHub Releases](https://github.com/[github-username]/sship/releases/latest).
+Download the latest release from [GitHub Releases](https://github.com/lambda0x63/sship/releases/latest).
 
 **Windows:**
 1. Download `sship-windows-amd64.zip`
@@ -75,7 +75,7 @@ chmod +x sship-linux-amd64
 ### Option 4: Build from Source
 
 ```bash
-git clone https://github.com/[github-username]/sship.git
+git clone https://github.com/lambda0x63/sship.git
 cd sship
 make build  # Build for current platform
 # or
