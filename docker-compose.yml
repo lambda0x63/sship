@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  sship:
+    image: ${DOCKER_USERNAME:-yourusername}/sship:latest
+    container_name: sship
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./sship.yaml:/app/config/sship.yaml
+      - sship-data:/app/data
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Seoul
+    # Optional: Add reverse proxy network
+    # networks:
+    #   - proxy
+
+volumes:
+  sship-data:
+
+# Optional: External network for reverse proxy
+# networks:
+#   proxy:
+#     external: true

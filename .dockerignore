@@ -1,0 +1,44 @@
+# Binaries
+sship
+sship-web
+dist/
+*.exe
+
+# Test files
+*_test.go
+*.test
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+LICENSE
+
+# CI/CD
+.github/
+.goreleaser.yml
+
+# Development
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local configs
+sship.yaml
+configs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.syso
+versioninfo.json
+
+# Temporary files
+*.tmp
+*.bak
+*.log
