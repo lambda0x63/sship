@@ -1,6 +1,6 @@
 module github.com/lambda0x63/sship
 
-go 1.24.5
+go 1.21
 
 require (
 	github.com/gin-gonic/gin v1.10.1
