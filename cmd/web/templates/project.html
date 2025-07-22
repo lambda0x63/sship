@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-gray-900 mb-3">📦 {{.projectName}}</h1>
+            <a href="/" class="text-blue-600 hover:underline text-sm">← 대시보드로 돌아가기</a>
+        </header>
+
+        <main>
+            <div class="grid gap-8">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-xl font-semibold mb-4">프로젝트 상태</h2>
+                    <div id="status-info">
+                        <div class="text-center text-gray-500 py-10">상태 확인 중...</div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-xl font-semibold mb-4">작업</h2>
+                    <div class="flex gap-3 flex-wrap">
+                        <button id="deploy-btn" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
+                            🚀 배포하기
+                        </button>
+                        <button id="logs-btn" class="px-5 py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
+                            📄 로그 보기
+                        </button>
+                        <button id="rollback-btn" class="px-5 py-2.5 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
+                            ↩️ 롤백
+                        </button>
+                    </div>
+                </div>
+
+                <div id="logs-section" class="bg-white rounded-xl shadow-sm p-6 hidden">
+                    <h2 class="text-xl font-semibold mb-4">실시간 로그</h2>
+                    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 max-h-[500px] overflow-y-auto">
+                        <pre id="log-content" class="font-mono text-sm whitespace-pre-wrap"></pre>
+                    </div>
+                </div>
+
+                <div id="deploy-progress" class="bg-white rounded-xl shadow-sm p-6 hidden">
+                    <h2 class="text-xl font-semibold mb-4">배포 진행 상황</h2>
+                    <div id="progress-steps" class="space-y-2">
+                        <!-- 진행 단계가 동적으로 표시됨 -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const projectName = "{{.projectName}}";
+    </script>
+    <script src="/static/js/project.js"></script>
+</body>
+</html>

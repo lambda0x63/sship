@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>sship - 초기 설정</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex items-center justify-center">
+        <div class="max-w-2xl w-full px-4 py-8">
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <header class="text-center mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">🚢 sship 초기 설정</h1>
+                    <p class="text-gray-600">첫 프로젝트를 설정하여 시작하세요</p>
+                </header>
+
+                <form id="setup-form" class="space-y-6">
+                    <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                        <p class="text-sm text-blue-800">
+                            sship을 사용하기 위해 첫 번째 프로젝트를 설정해주세요. 
+                            나중에 대시보드에서 더 많은 프로젝트를 추가할 수 있습니다.
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">프로젝트 이름</label>
+                        <input type="text" id="project-name" required 
+                               placeholder="my-awesome-app"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div class="space-y-4 border-t pt-4">
+                        <h3 class="font-medium text-gray-900">서버 연결 정보</h3>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">호스트 주소</label>
+                                <input type="text" id="host" required 
+                                       placeholder="123.456.789.0"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">SSH 포트</label>
+                                <input type="number" id="port" value="22" required 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">사용자명</label>
+                                <input type="text" id="user" required 
+                                       placeholder="root"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+                                <input type="password" id="password" required 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+
+                        <button type="button" id="test-connection" 
+                                class="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                            연결 테스트
+                        </button>
+                        <div id="connection-result" class="hidden text-sm p-3 rounded-lg"></div>
+                    </div>
+
+                    <div class="space-y-4 border-t pt-4">
+                        <h3 class="font-medium text-gray-900">프로젝트 설정</h3>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">프로젝트 경로</label>
+                            <input type="text" id="path" required 
+                                   placeholder="/root/my-app"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">서버에서 프로젝트가 위치한 절대 경로</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Git 브랜치</label>
+                                <input type="text" id="branch" value="main" required 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Docker Compose 파일</label>
+                                <input type="text" id="docker-compose" value="docker-compose.yml" required 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">헬스체크 URL (선택)</label>
+                            <input type="text" id="health-check" 
+                                   placeholder="http://localhost:3000/health"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 pt-4">
+                        <button type="submit" 
+                                class="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                            설정 완료 및 시작
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/setup.js"></script>
+</body>
+</html>
