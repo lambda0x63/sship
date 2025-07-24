@@ -4,50 +4,86 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.title}}</title>
+    <link rel="icon" type="image/png" href="/static/icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
 </head>
 <body class="bg-gray-50">
     <div class="max-w-7xl mx-auto px-4 py-8">
-        <header class="text-center mb-10">
-            <h1 class="text-4xl font-bold text-gray-900 mb-3">📦 {{.projectName}}</h1>
-            <a href="/" class="text-blue-600 hover:underline text-sm">← 대시보드로 돌아가기</a>
+        <header class="mb-10">
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <img src="/static/icon.png" alt="sship" class="w-12 h-12">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">{{.projectName}}</h1>
+                            <p class="text-sm text-gray-500">서비스 관리 및 배포</p>
+                        </div>
+                    </div>
+                    <a href="/" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        ← 대시보드로 돌아가기
+                    </a>
+                </div>
+            </div>
         </header>
 
         <main>
-            <div class="grid gap-8">
-                <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h2 class="text-xl font-semibold mb-4">프로젝트 상태</h2>
-                    <div id="status-info">
-                        <div class="text-center text-gray-500 py-10">상태 확인 중...</div>
+            <div class="grid gap-8 lg:grid-cols-2">
+                <!-- 왼쪽 컬럼: 주요 정보 -->
+                <div class="space-y-6">
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h2 class="text-xl font-semibold mb-4">서비스 상태</h2>
+                        <div id="status-info">
+                            <div class="text-center text-gray-500 py-10">상태 확인 중...</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h2 class="text-xl font-semibold mb-4">빠른 작업</h2>
+                        <div class="flex gap-3 flex-wrap">
+                            <button id="deploy-btn" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
+                                🚀 배포하기
+                            </button>
+                            <button id="logs-btn" class="px-5 py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
+                                📄 로그 보기
+                            </button>
+                        </div>
+                        <div class="mt-3 text-sm text-gray-500">
+                            💡 GitHub에서 최신 코드를 가져와서 Docker Compose로 재시작합니다
+                        </div>
+                    </div>
+
+                    <div id="deploy-progress" class="bg-white rounded-xl shadow-sm p-6 hidden">
+                        <h2 class="text-xl font-semibold mb-4">배포 진행 상황</h2>
+                        <div id="progress-steps" class="space-y-2">
+                            <!-- 진행 단계가 동적으로 표시됨 -->
+                        </div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h2 class="text-xl font-semibold mb-4">작업</h2>
-                    <div class="flex gap-3 flex-wrap">
-                        <button id="deploy-btn" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
-                            🚀 배포하기
-                        </button>
-                        <button id="logs-btn" class="px-5 py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
-                            📄 로그 보기
-                        </button>
-                        <button id="rollback-btn" class="px-5 py-2.5 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2">
-                            ↩️ 롤백
-                        </button>
+                <!-- 오른쪽 컬럼: 보조 정보 -->
+                <div class="space-y-6">
+                    <!-- 배포 히스토리 -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-semibold">배포 히스토리</h2>
+                            <button onclick="loadDeployHistory()" class="text-sm text-blue-600 hover:text-blue-800">
+                                새로고침
+                            </button>
+                        </div>
+                        <div id="deploy-history" class="space-y-3 max-h-[400px] overflow-y-auto">
+                            <div class="text-center text-gray-500 py-10">히스토리 로드 중...</div>
+                        </div>
                     </div>
-                </div>
 
-                <div id="logs-section" class="bg-white rounded-xl shadow-sm p-6 hidden">
-                    <h2 class="text-xl font-semibold mb-4">실시간 로그</h2>
-                    <div class="bg-gray-900 text-gray-100 rounded-lg p-4 max-h-[500px] overflow-y-auto">
-                        <pre id="log-content" class="font-mono text-sm whitespace-pre-wrap"></pre>
-                    </div>
-                </div>
-
-                <div id="deploy-progress" class="bg-white rounded-xl shadow-sm p-6 hidden">
-                    <h2 class="text-xl font-semibold mb-4">배포 진행 상황</h2>
-                    <div id="progress-steps" class="space-y-2">
-                        <!-- 진행 단계가 동적으로 표시됨 -->
+                    <div id="logs-section" class="bg-white rounded-xl shadow-sm p-6 hidden">
+                        <h2 class="text-xl font-semibold mb-4">실시간 로그</h2>
+                        <div class="bg-gray-900 text-gray-100 rounded-lg p-4 max-h-[500px] overflow-y-auto">
+                            <pre id="log-content" class="font-mono text-sm whitespace-pre-wrap"></pre>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -88,6 +88,11 @@ func main() {
 		v1.PATCH("/project/:name", apiHandler.UpdateProject)
 		v1.DELETE("/project/:name", apiHandler.DeleteProject)
 		v1.POST("/test-connection", apiHandler.TestConnection)
+		
+		// 배포 히스토리 및 상태 API
+		v1.GET("/project/:name/history", apiHandler.GetDeployHistory)
+		v1.GET("/deploy/active", apiHandler.GetActiveJobs)
+		v1.GET("/deploy/events", apiHandler.StreamDeployEvents)
 	}
 
 	fmt.Printf("🌐 sship 웹 UI 시작: http://localhost:%s\n", *port)

@@ -1,8 +1,10 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,15 +15,18 @@ import (
 )
 
 type Handler struct {
-	config   *config.Config
-	deployer *deploy.Deployer
-	upgrader websocket.Upgrader
+	config      *config.Config
+	deployer    *deploy.Deployer
+	deployQueue *deploy.DeployQueue
+	upgrader    websocket.Upgrader
 }
 
 func NewHandler(cfg *config.Config) *Handler {
+	deployer := deploy.NewDeployer(cfg)
 	return &Handler{
-		config:   cfg,
-		deployer: deploy.NewDeployer(cfg),
+		config:      cfg,
+		deployer:    deployer,
+		deployQueue: deploy.NewDeployQueue(deployer),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true
@@ -136,19 +141,17 @@ func (h *Handler) DeployProject(c *gin.Context) {
 		return
 	}
 	
-	jobID := fmt.Sprintf("deploy-%s-%d", projectName, time.Now().Unix())
-	
-	go func() {
-		err := h.deployer.Deploy(projectName)
-		if err != nil {
-			fmt.Printf("배포 실패: %v\n", err)
-		}
-	}()
+	// 배포 큐에 추가
+	job, err := h.deployQueue.Enqueue(projectName, req.Branch)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "배포 작업 추가 실패"})
+		return
+	}
 	
 	c.JSON(http.StatusOK, DeployResponse{
 		Success: true,
 		Message: "배포가 시작되었습니다",
-		JobID:   jobID,
+		JobID:   job.ID,
 	})
 }
 
@@ -212,7 +215,9 @@ func (h *Handler) StreamLogs(c *gin.Context) {
 	}
 	defer conn.Close()
 	
-	logWriter := &WebSocketWriter{conn: conn}
+	// WebSocket 쓰기 동기화를 위한 mutex
+	var mu sync.Mutex
+	logWriter := &WebSocketWriter{conn: conn, mu: &mu}
 	
 	progressChan := make(chan deploy.DeployProgress, 10)
 	defer close(progressChan)
@@ -220,23 +225,33 @@ func (h *Handler) StreamLogs(c *gin.Context) {
 	go func() {
 		for progress := range progressChan {
 			msg := fmt.Sprintf("[PROGRESS] %s|%s|%s", progress.Step, progress.Status, progress.Message)
+			mu.Lock()
 			conn.WriteMessage(websocket.TextMessage, []byte(msg))
+			mu.Unlock()
 		}
 	}()
 	
 	err = h.deployer.DeployWithProgress(projectName, logWriter, progressChan)
 	if err != nil {
+		mu.Lock()
 		conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("[ERROR] %v", err)))
+		mu.Unlock()
 	} else {
+		mu.Lock()
 		conn.WriteMessage(websocket.TextMessage, []byte("[COMPLETE] 배포가 완료되었습니다"))
+		mu.Unlock()
 	}
 }
 
 type WebSocketWriter struct {
 	conn *websocket.Conn
+	mu   *sync.Mutex
 }
 
 func (w *WebSocketWriter) Write(p []byte) (n int, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	
 	err = w.conn.WriteMessage(websocket.TextMessage, p)
 	if err != nil {
 		return 0, err
@@ -359,4 +374,48 @@ func (h *Handler) TestConnection(c *gin.Context) {
 		"success": true,
 		"message": "연결 성공",
 	})
+}
+
+// 배포 히스토리 조회
+func (h *Handler) GetDeployHistory(c *gin.Context) {
+	projectName := c.Param("name")
+	limit := 10
+	
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if l, err := fmt.Sscanf(limitStr, "%d", &limit); err == nil && l > 0 {
+			limit = l
+		}
+	}
+	
+	history := h.deployQueue.GetHistory(projectName, limit)
+	c.JSON(http.StatusOK, history)
+}
+
+// 현재 진행 중인 배포 작업 조회
+func (h *Handler) GetActiveJobs(c *gin.Context) {
+	jobs := h.deployQueue.GetActiveJobs()
+	c.JSON(http.StatusOK, jobs)
+}
+
+// 배포 상태 실시간 업데이트 (SSE)
+func (h *Handler) StreamDeployEvents(c *gin.Context) {
+	clientID := fmt.Sprintf("client-%d", time.Now().UnixNano())
+	events := h.deployQueue.Subscribe(clientID)
+	defer h.deployQueue.Unsubscribe(clientID)
+	
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+	
+	for {
+		select {
+		case event := <-events:
+			data, _ := json.Marshal(event)
+			c.Writer.Write([]byte(fmt.Sprintf("data: %s\n\n", data)))
+			c.Writer.Flush()
+		case <-c.Request.Context().Done():
+			return
+		}
+	}
 }

@@ -4,113 +4,225 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>sship - 초기 설정</title>
+    <link rel="icon" type="image/png" href="/static/icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .step-indicator {
+            transition: all 0.3s ease;
+        }
+        .step-indicator.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .step-indicator.completed {
+            background-color: #10b981;
+            color: white;
+        }
+    </style>
 </head>
 <body class="bg-gray-50">
-    <div class="min-h-screen flex items-center justify-center">
-        <div class="max-w-2xl w-full px-4 py-8">
-            <div class="bg-white rounded-xl shadow-lg p-8">
-                <header class="text-center mb-8">
-                    <h1 class="text-3xl font-bold text-gray-900 mb-2">🚢 sship 초기 설정</h1>
-                    <p class="text-gray-600">첫 프로젝트를 설정하여 시작하세요</p>
-                </header>
+    <div class="min-h-screen py-12 px-4">
+        <div class="max-w-4xl mx-auto">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <img src="/static/icon.png" alt="sship" class="w-20 h-20 mx-auto mb-4">
+                <h1 class="text-3xl font-bold text-gray-900">sship 시작하기</h1>
+                <p class="text-gray-600 mt-2">간단한 설정으로 첫 번째 서비스를 배포해보세요</p>
+            </div>
 
-                <form id="setup-form" class="space-y-6">
-                    <div class="bg-blue-50 p-4 rounded-lg mb-6">
-                        <p class="text-sm text-blue-800">
-                            sship을 사용하기 위해 첫 번째 프로젝트를 설정해주세요. 
-                            나중에 대시보드에서 더 많은 프로젝트를 추가할 수 있습니다.
-                        </p>
-                    </div>
+            <!-- Progress Steps -->
+            <div class="flex items-center justify-center mb-12">
+                <div class="flex items-center space-x-4">
+                    <div class="step-indicator active flex items-center justify-center w-10 h-10 rounded-full border-2 border-blue-300 font-semibold">1</div>
+                    <div class="w-24 h-1 bg-gray-300"></div>
+                    <div class="step-indicator flex items-center justify-center w-10 h-10 rounded-full border-2 border-gray-300 text-gray-400 font-semibold">2</div>
+                    <div class="w-24 h-1 bg-gray-300"></div>
+                    <div class="step-indicator flex items-center justify-center w-10 h-10 rounded-full border-2 border-gray-300 text-gray-400 font-semibold">3</div>
+                </div>
+            </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">프로젝트 이름</label>
-                        <input type="text" id="project-name" required 
-                               placeholder="my-awesome-app"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <div class="space-y-4 border-t pt-4">
-                        <h3 class="font-medium text-gray-900">서버 연결 정보</h3>
+            <!-- Main Form -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <form id="setup-form" class="p-8">
+                    <!-- Step 1: Service Name -->
+                    <div id="step-1" class="step-content">
+                        <div class="mb-8">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-2">서비스 이름 설정</h2>
+                            <p class="text-gray-600">배포할 서비스의 이름을 지정해주세요</p>
+                        </div>
                         
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">호스트 주소</label>
-                                <input type="text" id="host" required 
-                                       placeholder="123.456.789.0"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">SSH 포트</label>
-                                <input type="number" id="port" value="22" required 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">서비스 이름</label>
+                                <input type="text" id="project-name" required 
+                                       placeholder="예: my-web-app, api-server"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                                <p class="text-sm text-gray-500 mt-2">영문, 숫자, 하이픈(-)만 사용 가능합니다</p>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">사용자명</label>
-                                <input type="text" id="user" required 
-                                       placeholder="root"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
-                                <input type="password" id="password" required 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            </div>
-                        </div>
-
-                        <button type="button" id="test-connection" 
-                                class="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
-                            연결 테스트
-                        </button>
-                        <div id="connection-result" class="hidden text-sm p-3 rounded-lg"></div>
-                    </div>
-
-                    <div class="space-y-4 border-t pt-4">
-                        <h3 class="font-medium text-gray-900">프로젝트 설정</h3>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">프로젝트 경로</label>
-                            <input type="text" id="path" required 
-                                   placeholder="/root/my-app"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            <p class="text-xs text-gray-500 mt-1">서버에서 프로젝트가 위치한 절대 경로</p>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Git 브랜치</label>
-                                <input type="text" id="branch" value="main" required 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Docker Compose 파일</label>
-                                <input type="text" id="docker-compose" value="docker-compose.yml" required 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">헬스체크 URL (선택)</label>
-                            <input type="text" id="health-check" 
-                                   placeholder="http://localhost:3000/health"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <div class="mt-8 flex justify-end">
+                            <button type="button" onclick="nextStep(2)" 
+                                    class="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium">
+                                다음 단계 →
+                            </button>
                         </div>
                     </div>
 
-                    <div class="flex gap-3 pt-4">
-                        <button type="submit" 
-                                class="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                            설정 완료 및 시작
-                        </button>
+                    <!-- Step 2: VPS Connection -->
+                    <div id="step-2" class="step-content hidden">
+                        <div class="mb-8">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-2">VPS 연결 설정</h2>
+                            <p class="text-gray-600">서비스를 배포할 서버의 SSH 접속 정보를 입력해주세요</p>
+                        </div>
+
+                        <div class="space-y-6">
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">호스트 주소</label>
+                                    <input type="text" id="host" required 
+                                           placeholder="192.168.1.100 또는 example.com"
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">SSH 포트</label>
+                                    <input type="number" id="port" value="22" required 
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">사용자명</label>
+                                    <input type="text" id="user" required 
+                                           placeholder="root 또는 ubuntu"
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">비밀번호</label>
+                                    <input type="password" id="password" required 
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                            </div>
+
+                            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                <button type="button" id="test-connection" 
+                                        class="w-full px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium">
+                                    🔌 연결 테스트
+                                </button>
+                                <div id="connection-result" class="hidden mt-3 text-sm p-3 rounded-lg"></div>
+                            </div>
+                        </div>
+
+                        <div class="mt-8 flex justify-between">
+                            <button type="button" onclick="previousStep(1)" 
+                                    class="px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors font-medium">
+                                ← 이전 단계
+                            </button>
+                            <button type="button" onclick="nextStep(3)" 
+                                    class="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium">
+                                다음 단계 →
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Service Configuration -->
+                    <div id="step-3" class="step-content hidden">
+                        <div class="mb-8">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-2">서비스 설정</h2>
+                            <p class="text-gray-600">서버 내 서비스 위치와 배포 설정을 입력해주세요</p>
+                        </div>
+
+                        <div class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">서비스 경로</label>
+                                <input type="text" id="path" required 
+                                       placeholder="/home/deploy/my-app"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <p class="text-sm text-gray-500 mt-2">서버 내 서비스가 위치한 절대 경로입니다</p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Git 브랜치</label>
+                                    <input type="text" id="branch" value="main" required 
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Docker Compose 파일</label>
+                                    <input type="text" id="docker-compose" value="docker-compose.prod.yml" required 
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">헬스체크 URL (선택)</label>
+                                <input type="text" id="health-check" 
+                                       placeholder="https://example.com/health"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <p class="text-sm text-gray-500 mt-2">서비스 상태를 확인할 수 있는 URL (없으면 비워두세요)</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-8 flex justify-between">
+                            <button type="button" onclick="previousStep(2)" 
+                                    class="px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors font-medium">
+                                ← 이전 단계
+                            </button>
+                            <button type="submit" 
+                                    class="px-8 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium">
+                                ✓ 설정 완료
+                            </button>
+                        </div>
                     </div>
                 </form>
+            </div>
+
+            <!-- Help Section -->
+            <div class="mt-8 text-center text-sm text-gray-600">
+                <p>도움이 필요하신가요? <a href="https://github.com/lambda0x63/sship" class="text-blue-600 hover:underline">문서 보기</a></p>
             </div>
         </div>
     </div>
 
+    <script>
+        function nextStep(step) {
+            // Validate current step
+            if (step === 2 && !document.getElementById('project-name').value) {
+                alert('서비스 이름을 입력해주세요');
+                return;
+            }
+
+            // Hide all steps
+            document.querySelectorAll('.step-content').forEach(el => el.classList.add('hidden'));
+            // Show target step
+            document.getElementById(`step-${step}`).classList.remove('hidden');
+            
+            // Update indicators
+            updateStepIndicators(step);
+        }
+
+        function previousStep(step) {
+            document.querySelectorAll('.step-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`step-${step}`).classList.remove('hidden');
+            updateStepIndicators(step);
+        }
+
+        function updateStepIndicators(currentStep) {
+            document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
+                const stepNum = index + 1;
+                indicator.classList.remove('active', 'completed');
+                
+                if (stepNum < currentStep) {
+                    indicator.classList.add('completed');
+                } else if (stepNum === currentStep) {
+                    indicator.classList.add('active');
+                }
+            });
+        }
+    </script>
     <script src="/static/js/setup.js"></script>
 </body>
 </html>

@@ -65,7 +65,7 @@ func LoadConfig(path string) (*Config, error) {
 			proj.Branch = "main"
 		}
 		if proj.DockerCompose == "" {
-			proj.DockerCompose = "docker-compose.yml"
+			proj.DockerCompose = "docker-compose.prod.yml"
 		}
 		config.Projects[name] = proj
 	}
@@ -162,9 +162,19 @@ func ValidateConfig(projectName string) error {
 }
 
 func (c *Config) Save() error {
+	if c.filePath == "" {
+		return fmt.Errorf("설정 파일 경로가 지정되지 않았습니다")
+	}
+
 	data, err := yaml.Marshal(c)
 	if err != nil {
 		return fmt.Errorf("설정 직렬화 실패: %v", err)
+	}
+
+	// 디렉토리가 없으면 생성
+	dir := filepath.Dir(c.filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("설정 디렉토리 생성 실패: %v", err)
 	}
 
 	if err := os.WriteFile(c.filePath, data, 0644); err != nil {

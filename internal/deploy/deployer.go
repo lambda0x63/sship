@@ -80,13 +80,7 @@ func (d *Deployer) DeployWithProgress(projectName string, output io.Writer, prog
 	}
 	progressChan <- DeployProgress{Step: "connect", Message: "서버 연결 확인", Status: "completed"}
 
-	progressChan <- DeployProgress{Step: "backup", Message: "현재 상태 백업", Status: "active"}
-	if err := client.CreateBackup(proj.Path); err != nil {
-		progressChan <- DeployProgress{Step: "backup", Message: "백업 실패 (계속 진행)", Status: "error"}
-		fmt.Fprintf(output, "⚠️ 백업 실패: %v\n", err)
-	} else {
-		progressChan <- DeployProgress{Step: "backup", Message: "현재 상태 백업", Status: "completed"}
-	}
+	// 백업 단계 제거 - GitHub이 백업 역할
 
 	progressChan <- DeployProgress{Step: "pull", Message: "코드 업데이트", Status: "active"}
 	fmt.Fprintf(output, "📥 Git pull 시작 (브랜치: %s)...\n", proj.Branch)
@@ -116,6 +110,8 @@ func (d *Deployer) DeployWithProgress(projectName string, output io.Writer, prog
 		progressChan <- DeployProgress{Step: "health", Message: "서비스 헬스체크", Status: "completed"}
 	}
 
+	// 배포 완료 신호
+	progressChan <- DeployProgress{Step: "complete", Message: "배포 완료", Status: "completed"}
 	fmt.Fprintf(output, "✅ 배포 완료!\n")
 	return nil
 }

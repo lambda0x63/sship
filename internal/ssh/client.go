@@ -108,14 +108,22 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) GitPull(projectPath string, branch string) error {
-	command := fmt.Sprintf("cd %s && git fetch origin && git checkout %s && git pull origin %s", 
-		projectPath, branch, branch)
+	// 그냥 git pull을 하자. 심플하게.
+	command := fmt.Sprintf("cd %s && git pull origin %s", projectPath, branch)
 	
 	_, err := c.ExecuteCommand(command)
+	if err != nil {
+		// pull 실패시 한번 더 시도 (force로)
+		forceCommand := fmt.Sprintf("cd %s && git fetch origin && git reset --hard origin/%s", 
+			projectPath, branch)
+		_, err = c.ExecuteCommand(forceCommand)
+	}
+	
 	return err
 }
 
 func (c *Client) DockerComposeUp(projectPath string, composeFile string) error {
+	// Docker Compose가 알아서 처리
 	command := fmt.Sprintf("cd %s && docker compose -f %s up -d --build", 
 		projectPath, composeFile)
 	
@@ -163,10 +171,17 @@ func (c *Client) ExecuteCommandWithStreaming(command string, output io.Writer) e
 }
 
 func (c *Client) DockerComposeUpWithStreaming(projectPath string, composeFile string, output io.Writer) error {
-	command := fmt.Sprintf("cd %s && docker compose -f %s up -d --build", 
+	// 안전하게 기존 스택 정리 후 새로 시작
+	fmt.Fprintf(output, "🧹 기존 스택 정리...\n")
+	downCmd := fmt.Sprintf("cd %s && docker compose -f %s down --remove-orphans", 
+		projectPath, composeFile)
+	c.ExecuteCommandWithStreaming(downCmd, output)
+	
+	fmt.Fprintf(output, "🚀 새로운 스택 빌드 및 시작...\n")
+	upCmd := fmt.Sprintf("cd %s && docker compose -f %s up -d --build", 
 		projectPath, composeFile)
 	
-	return c.ExecuteCommandWithStreaming(command, output)
+	return c.ExecuteCommandWithStreaming(upCmd, output)
 }
 
 func (c *Client) CheckContainerStatus(projectPath string, composeFile string) (string, error) {
