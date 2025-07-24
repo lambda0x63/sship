@@ -2,112 +2,6 @@
 
 let ws = null; // WebSocket 연결
 
-// 배포 상세 정보 표시 (미구현)
-function showDeployDetails(jobId) {
-    // 향후 구현 예정
-    console.log('배포 상세 정보:', jobId);
-}
-
-// 배포 히스토리 로드
-async function loadDeployHistory() {
-    try {
-        const response = await fetch(`/api/v1/project/${projectName}/history?limit=10`);
-        const history = await response.json();
-        
-        const historyDiv = document.getElementById('deploy-history');
-        
-        if (!history || history.length === 0) {
-            historyDiv.innerHTML = `
-                <div class="text-center py-10">
-                    <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <p class="text-gray-500">아직 배포 기록이 없습니다</p>
-                    <p class="text-sm text-gray-400 mt-1">첫 배포를 시작해보세요!</p>
-                </div>
-            `;
-            return;
-        }
-        
-        historyDiv.innerHTML = history.map(job => {
-            const statusClass = getJobStatusClass(job.status);
-            const statusIcon = getJobStatusIcon(job.status);
-            const duration = job.completed_at ? 
-                Math.round((new Date(job.completed_at) - new Date(job.started_at)) / 1000) : 
-                null;
-            
-            return `
-                <div class="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer" onclick="showDeployDetails('${job.id}')">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <div class="${statusClass} w-10 h-10 rounded-full flex items-center justify-center">
-                                ${statusIcon}
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <span class="font-medium text-gray-900">배포 #${job.id}</span>
-                                    <span class="text-sm text-gray-500">• ${job.branch || 'main'} 브랜치</span>
-                                </div>
-                                <div class="text-sm text-gray-500">${formatDateTime(job.started_at)}</div>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-sm font-medium ${getJobStatusTextClass(job.status)}">
-                                ${getJobStatusText(job.status)}
-                            </div>
-                            ${duration ? `<div class="text-xs text-gray-500">소요시간: ${duration}초</div>` : ''}
-                        </div>
-                    </div>
-                    ${job.error ? `
-                        <div class="mt-3 p-2 bg-red-50 rounded-md">
-                            <p class="text-sm text-red-800">⚠️ ${job.error}</p>
-                        </div>
-                    ` : ''}
-                    ${job.status === 'completed' ? `
-                        <div class="mt-2 text-xs text-gray-500">
-                            🎉 성공적으로 배포되었습니다
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }).join('');
-    } catch (error) {
-        console.error('히스토리 로드 실패:', error);
-    }
-}
-
-function getJobStatusClass(status) {
-    switch(status) {
-        case 'completed': return 'bg-green-100';
-        case 'failed': return 'bg-red-100';
-        case 'running': return 'bg-blue-100';
-        default: return 'bg-gray-100';
-    }
-}
-
-function getJobStatusIcon(status) {
-    switch(status) {
-        case 'completed': 
-            return '<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
-        case 'failed':
-            return '<svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
-        case 'running':
-            return '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>';
-        default:
-            return '<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
-    }
-}
-
-function getJobStatusText(status) {
-    switch(status) {
-        case 'completed': return '완료';
-        case 'failed': return '실패';
-        case 'running': return '진행 중';
-        case 'pending': return '대기 중';
-        default: return status;
-    }
-}
-
 function getJobStatusTextClass(status) {
     switch(status) {
         case 'completed': return 'text-green-600';
@@ -140,9 +34,11 @@ async function loadProjectStatus() {
                 <span class="font-medium text-gray-600">컨테이너 상태</span>
                 <span class="font-semibold">${formatStatus(data.status)}</span>
             </div>
-            <div class="flex justify-between py-3 border-b border-gray-200">
+            <div class="flex justify-between items-start py-3 border-b border-gray-200">
                 <span class="font-medium text-gray-600">현재 커밋</span>
-                <span class="font-mono text-sm bg-gray-100 px-2 py-1 rounded">${data.commit || '알 수 없음'}</span>
+                <div class="text-right max-w-xs">
+                    ${formatCommitInfo(data.commit)}
+                </div>
             </div>
             <div class="flex justify-between py-3 border-b border-gray-200">
                 <span class="font-medium text-gray-600">Git 브랜치</span>
@@ -164,6 +60,28 @@ function formatStatus(status) {
     if (status.includes('running')) return '<span class="text-green-600 font-medium">✅ 실행 중</span>';
     if (status.includes('stopped')) return '<span class="text-red-600 font-medium">❌ 중지됨</span>';
     return `<span class="text-gray-600">${status}</span>`;
+}
+
+function formatCommitInfo(commitInfo) {
+    if (!commitInfo || commitInfo === 'unknown' || commitInfo === 'unknown|') {
+        return '<span class="text-gray-500">커밋 정보 없음</span>';
+    }
+    
+    // 커밋 해시와 메시지 분리
+    const parts = commitInfo.split('|');
+    const hash = parts[0] || 'unknown';
+    const message = parts[1] || '';
+    
+    if (!message) {
+        return `<span class="font-mono text-sm bg-gray-100 px-2 py-1 rounded">${hash}</span>`;
+    }
+    
+    return `
+        <div>
+            <span class="font-mono text-sm bg-gray-100 px-2 py-1 rounded">${hash}</span>
+            <div class="text-sm text-gray-600 mt-1 truncate">${message}</div>
+        </div>
+    `;
 }
 
 function formatDate(dateStr) {
@@ -334,7 +252,6 @@ function handleDeployComplete() {
     // 상태 새로고침
     setTimeout(() => {
         loadProjectStatus();
-        loadDeployHistory();
         
         // 진행 상황 숨기기
         setTimeout(() => {
@@ -416,9 +333,6 @@ function connectDeployEvents() {
 
 // 배포 이벤트 처리
 function handleDeployEvent(event) {
-    // 히스토리 새로고침
-    loadDeployHistory();
-    
     // 상태 업데이트
     if (event.status === 'completed' || event.status === 'failed') {
         loadProjectStatus();
@@ -465,10 +379,218 @@ function showNotification(message, type) {
     }, 3000);
 }
 
+// 환경변수 토글
+let envVarsLoaded = false;
+let currentEnvVars = {};
+
+async function toggleEnvVars() {
+    const envVarsDiv = document.getElementById('env-vars');
+    const toggleBtn = document.getElementById('toggle-env-btn');
+    
+    if (envVarsDiv.classList.contains('hidden')) {
+        envVarsDiv.classList.remove('hidden');
+        toggleBtn.textContent = '숨기기';
+        
+        if (!envVarsLoaded) {
+            await loadEnvironmentVariables();
+            envVarsLoaded = true;
+        }
+    } else {
+        envVarsDiv.classList.add('hidden');
+        toggleBtn.textContent = '보기';
+    }
+}
+
+// 환경변수 로드
+async function loadEnvironmentVariables() {
+    const envVarsDiv = document.getElementById('env-vars');
+    
+    try {
+        const response = await fetch(`/api/v1/project/${projectName}/environment`);
+        const data = await response.json();
+        
+        if (data.environment && Object.keys(data.environment).length > 0) {
+            currentEnvVars = data.environment;
+            const envVarsHtml = Object.entries(data.environment)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([key, value]) => {
+                    return `
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0 group">
+                            <span class="font-mono text-sm text-gray-700">${key}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono text-sm text-gray-900 break-all max-w-xs text-right">
+                                    ${value}
+                                </span>
+                                <button onclick="copyEnvVar('${key}', '${value.replace(/'/g, "\\'")}')" 
+                                        class="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-100 rounded"
+                                        title="복사">
+                                    <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            
+            envVarsDiv.innerHTML = `
+                <div class="max-h-96 overflow-y-auto">
+                    ${envVarsHtml}
+                </div>
+                <div class="mt-4 flex justify-between items-center">
+                    <button onclick="copyAllEnvVars()" class="text-sm text-blue-600 hover:text-blue-800">
+                        전체 복사 (.env 형식)
+                    </button>
+                    <span id="copy-feedback" class="text-sm text-green-600 opacity-0 transition-opacity">
+                        복사됨!
+                    </span>
+                </div>
+            `;
+        } else {
+            envVarsDiv.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">환경 변수가 설정되지 않았습니다</p>';
+        }
+    } catch (error) {
+        console.error('환경변수 로드 실패:', error);
+        envVarsDiv.innerHTML = '<p class="text-sm text-red-600 text-center py-4">환경 변수를 불러올 수 없습니다</p>';
+    }
+}
+
+// 개별 환경변수 복사
+function copyEnvVar(key, value) {
+    const text = `${key}=${value}`;
+    copyToClipboard(text, () => {
+        showCopyFeedback();
+    });
+}
+
+// 전체 환경변수 복사
+function copyAllEnvVars() {
+    const envText = Object.entries(currentEnvVars)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => `${key}=${value}`)
+        .join('\n');
+    
+    copyToClipboard(envText, () => {
+        showCopyFeedback();
+    });
+}
+
+// 환경 변수 섹션 복사 (보이는 상태 그대로)
+function copyEnvSection() {
+    const envSection = document.querySelector('#env-vars').parentElement;
+    const title = envSection.querySelector('h2').textContent;
+    
+    // 환경변수가 로드되지 않았으면 먼저 로드
+    if (!envVarsLoaded) {
+        showNotification('환경 변수를 먼저 확인해주세요', 'warning');
+        return;
+    }
+    
+    // 환경변수 텍스트 생성
+    let copyText = `${title}\n${'='.repeat(title.length)}\n\n`;
+    
+    if (Object.keys(currentEnvVars).length > 0) {
+        Object.entries(currentEnvVars)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .forEach(([key, value]) => {
+                copyText += `${key}: ${value}\n`;
+            });
+    } else {
+        copyText += '환경 변수가 설정되지 않았습니다\n';
+    }
+    
+    copyToClipboard(copyText, () => {
+        showNotification('환경 변수 섹션이 복사되었습니다', 'success');
+    });
+}
+
+// 클립보드 복사 함수
+async function copyToClipboard(text, onSuccess) {
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            onSuccess();
+        } else {
+            // 폴백: textarea 사용
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-999999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                onSuccess();
+            } catch (err) {
+                console.error('복사 실패:', err);
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        }
+    } catch (err) {
+        console.error('클립보드 복사 실패:', err);
+    }
+}
+
+// 복사 완료 피드백
+function showCopyFeedback() {
+    const feedback = document.getElementById('copy-feedback');
+    if (feedback) {
+        feedback.classList.remove('opacity-0');
+        feedback.classList.add('opacity-100');
+        
+        setTimeout(() => {
+            feedback.classList.remove('opacity-100');
+            feedback.classList.add('opacity-0');
+        }, 2000);
+    }
+}
+
+// 서비스 삭제
+async function deleteService() {
+    const confirmMessage = `'${projectName}' 서비스를 sship에서 제거하시겠습니까?\n\n` +
+                          `⚠️ 주의사항:\n` +
+                          `• sship 설정에서만 제거됩니다\n` +
+                          `• VPS의 실제 파일과 컨테이너는 그대로 유지됩니다\n` +
+                          `• 이 작업은 되돌릴 수 없습니다`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    // 두 번째 확인
+    const userInput = prompt(`정말로 삭제하려면 서비스명을 입력하세요: ${projectName}`);
+    if (userInput !== projectName) {
+        showNotification('서비스명이 일치하지 않습니다', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/v1/project/${projectName}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            showNotification('서비스가 삭제되었습니다', 'success');
+            // 메인 페이지로 리다이렉트
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1500);
+        } else {
+            showNotification('서비스 삭제 실패: ' + (result.error || result.message), 'error');
+        }
+    } catch (error) {
+        showNotification('서비스 삭제 중 오류 발생', 'error');
+        console.error('삭제 오류:', error);
+    }
+}
+
 // 이벤트 리스너
 document.addEventListener('DOMContentLoaded', () => {
     loadProjectStatus();
-    loadDeployHistory();
     
     // 실시간 배포 이벤트 연결
     connectDeployEvents();

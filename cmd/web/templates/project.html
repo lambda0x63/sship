@@ -62,23 +62,41 @@
                             <!-- 진행 단계가 동적으로 표시됨 -->
                         </div>
                     </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-semibold">환경 변수</h2>
+                            <div class="flex items-center gap-2">
+                                <button onclick="copyEnvSection()" class="text-sm text-gray-600 hover:text-gray-800" title="환경 변수 섹션 복사">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                    </svg>
+                                </button>
+                                <button onclick="toggleEnvVars()" id="toggle-env-btn" class="text-sm text-blue-600 hover:text-blue-800">
+                                    보기
+                                </button>
+                            </div>
+                        </div>
+                        <div id="env-vars" class="hidden">
+                            <div class="text-center text-gray-500 py-4">환경 변수 로드 중...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 위험 구역 -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-red-200">
+                        <h2 class="text-xl font-semibold text-red-600 mb-4">위험 구역</h2>
+                        <p class="text-sm text-gray-600 mb-4">
+                            이 작업은 되돌릴 수 없습니다. sship 설정에서 서비스가 제거됩니다.
+                        </p>
+                        <button onclick="deleteService()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors">
+                            🗑️ 서비스 삭제
+                        </button>
+                    </div>
                 </div>
 
                 <!-- 오른쪽 컬럼: 보조 정보 -->
                 <div class="space-y-6">
-                    <!-- 배포 히스토리 -->
-                    <div class="bg-white rounded-xl shadow-sm p-6">
-                        <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-xl font-semibold">배포 히스토리</h2>
-                            <button onclick="loadDeployHistory()" class="text-sm text-blue-600 hover:text-blue-800">
-                                새로고침
-                            </button>
-                        </div>
-                        <div id="deploy-history" class="space-y-3 max-h-[400px] overflow-y-auto">
-                            <div class="text-center text-gray-500 py-10">히스토리 로드 중...</div>
-                        </div>
-                    </div>
-
                     <div id="logs-section" class="bg-white rounded-xl shadow-sm p-6 hidden">
                         <h2 class="text-xl font-semibold mb-4">실시간 로그</h2>
                         <div class="bg-gray-900 text-gray-100 rounded-lg p-4 max-h-[500px] overflow-y-auto">

@@ -20,9 +20,3 @@ func ProjectHandler(c *gin.Context) {
 		"projectName": projectName,
 	})
 }
-
-func SetupHandler(c *gin.Context) {
-	c.HTML(http.StatusOK, "setup.html", gin.H{
-		"title": "sship - 초기 설정",
-	})
-}

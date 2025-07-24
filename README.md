@@ -6,170 +6,183 @@
   
   # sship
   
-  **SSH-based Docker Compose deployment tool with Web UI**
+  **Simple SSH deployment tool for Docker Compose projects**
   <br>
 </div>
 
-## Installation
+## What is sship?
 
-### Option 1: Docker (Recommended)
+sship pulls your code from GitHub and runs `docker compose up` on your VPS. That's it.
+
+## Quick Start
+
+### 1. Prerequisites on VPS
 
 ```bash
-# Using Docker Hub
-docker run -d \
-  --name sship \
-  -p 8080:8080 \
-  -v ./sship.yaml:/app/config/sship.yaml \
-  lambda0x63/sship:latest
+# SSH into your VPS
+ssh root@your-vps.com
 
-# Or using Docker Compose
-curl -O https://raw.githubusercontent.com/lambda0x63/sship/main/docker-compose.yml
-docker-compose up -d
+# Clone your project
+git clone https://github.com/yourusername/your-project.git
+cd your-project
+
+# Create docker-compose.prod.yml
+# Create .env.production if needed
 ```
 
-### Option 2: Homebrew (macOS/Linux)
+### 2. Install sship
 
+#### Option 1: Docker (Recommended)
 ```bash
-# Add tap (one time only)
-brew tap lambda0x63/tap
+# Run with Docker image
+docker run -d \
+  --name sship \
+  -p 9999:9999 \
+  -v $(pwd)/sship.yaml:/app/sship.yaml \
+  ghcr.io/lambda0x63/sship:latest
 
+# Or create docker-compose.yml
+cat > docker-compose.yml << EOF
+version: '3.8'
+services:
+  sship:
+    image: ghcr.io/lambda0x63/sship:latest
+    container_name: sship
+    ports:
+      - "9999:9999"
+    volumes:
+      - ./sship.yaml:/app/sship.yaml
+    restart: unless-stopped
+EOF
+
+# Run
+docker compose up -d
+```
+
+#### Option 2: Binary Download
+```bash
+# Linux (amd64)
+curl -L https://github.com/lambda0x63/sship/releases/latest/download/sship-linux-amd64 -o sship
+chmod +x sship
+
+# macOS (Apple Silicon)
+curl -L https://github.com/lambda0x63/sship/releases/latest/download/sship-darwin-arm64 -o sship
+chmod +x sship
+
+# macOS (Intel)
+curl -L https://github.com/lambda0x63/sship/releases/latest/download/sship-darwin-amd64 -o sship
+chmod +x sship
+
+# Run (default port: 9999)
+./sship
+```
+
+#### Option 3: Homebrew (macOS)
+```bash
 # Install
+brew tap lambda0x63/sship
 brew install sship
 
 # Run
 sship
 ```
 
-### Option 3: Download Pre-built Binary
+### 3. Add Service
 
-Download the latest release from [GitHub Releases](https://github.com/lambda0x63/sship/releases/latest).
+1. Open http://localhost:9999
+2. Click "새 서비스 추가" (Add Service)
+3. Fill in:
+   - Service name
+   - VPS connection (host, port, user, password)
+   - Project path (e.g., `/root/your-project`)
+   - Docker Compose file (default: `docker-compose.prod.yml`)
 
-**Windows:**
-1. Download `sship-windows-amd64.zip`
-2. Extract the zip file
-3. Run `sship-windows-amd64.exe`
+### 4. Deploy
 
-**macOS (without Homebrew):**
-```bash
-# Download and extract
-tar -xzf sship-darwin-arm64.tar.gz
+Click "🚀 배포하기" button. Done!
 
-# Remove quarantine attribute (macOS security)
-xattr -d com.apple.quarantine sship-darwin-arm64
+## Features
 
-# Make executable and run
-chmod +x sship-darwin-arm64
-./sship-darwin-arm64
-```
+- 🚀 One-click deployment
+- 📊 Real-time deployment logs
+- 🔍 Service status monitoring
+- 🔐 Environment variables viewer
+- 🗑️ Easy service management
 
-**Linux:**
-```bash
-# Download and extract
-tar -xzf sship-linux-amd64.tar.gz
+## How it Works
 
-# Make executable and run
-chmod +x sship-linux-amd64
-./sship-linux-amd64
-```
+When you deploy:
+1. SSH into your VPS
+2. `git pull` latest code
+3. `docker compose down` (safely)
+4. `docker compose up -d --build`
 
-### Option 4: Build from Source
+## Build from Source
 
 ```bash
 git clone https://github.com/lambda0x63/sship.git
 cd sship
-make build  # Build for current platform
-# or
-make build-all  # Build for all platforms
+
+# Local build
+go build -o sship ./cmd/web
+
+# Or build for multiple platforms
+make build-all
+
+# Build Docker image
+docker build -t sship:local .
 ```
 
-## Quick Start
+## Runtime Options
 
-1. **Start sship:**
+### Binary
 ```bash
-make run
-# Open http://localhost:8080 in your browser
+# Custom port
+./sship -port 8080
+
+# Custom config file
+./sship -config myconfig.yaml
+
+# Show version
+./sship -version
 ```
 
-2. **Initial Setup:**
-   - On first run, you'll see a setup wizard
-   - Enter your first project details
-   - Test the SSH connection
-   - Click "Setup Complete" to start
-
-3. **Add More Projects:**
-   - Click "➕ Add Project" button on dashboard
-   - Fill in server and project details
-   - All settings are saved automatically
-
-## Usage
-
+### Docker
 ```bash
-# Start web server
-make run
-
-# Access the dashboard
-http://localhost:8080
+# Custom port and config
+docker run -d \
+  --name sship \
+  -p 8080:9999 \
+  -v $(pwd)/myconfig.yaml:/app/sship.yaml \
+  ghcr.io/lambda0x63/sship:latest
 ```
 
-## Features
+## Updating
 
-- 🎯 **Easy Setup Wizard** - Get started in minutes with guided setup
-- 🌐 **Multi-VPS Support** - Manage projects across multiple servers
-- 🚀 **One-click Deployment** - Deploy with a single button click
-- 📊 **Real-time Dashboard** - Monitor all your projects in one place
-- 📜 **Live Log Streaming** - Watch deployment progress in real-time
-- 🔄 **Easy Rollback** - Quickly revert to previous version
-- ✅ **Pre-deployment Validation** - Checks before deployment
-- 📱 **Responsive Design** - Works on desktop and mobile
-- ➕ **Web-based Configuration** - Add/edit projects directly from UI
-
-## How it Works
-
-1. **Initial Setup** - Use the setup wizard or add projects via the dashboard
-2. **Start the web interface** with `make run`
-3. **Click deploy** on any project from the dashboard
-4. **Watch live progress** as sship:
-   - Connects to your VPS via SSH
-   - Pulls latest code from Git
-   - Builds and restarts Docker containers
-   - Validates deployment health
-
-## Requirements
-
-**On your local machine:**
-- Go 1.19+ (for building)
-- Web browser
-
-**On your VPS:**
-- Docker & Docker Compose installed
-- Git installed
-
-## Initial VPS Setup
-
-**First time setup for each project:**
-
+### Docker Update
 ```bash
-# 1. SSH into your VPS
-ssh root@your-vps.com
+# Pull latest image
+docker pull ghcr.io/lambda0x63/sship:latest
 
-# 2. Clone your repository
-cd /root
-git clone https://github.com/yourusername/your-project.git
+# Stop and remove old container
+docker stop sship && docker rm sship
 
-# 3. For private repositories, set up authentication:
-# Option A: Using personal access token
-git config --global credential.helper store
-git pull  # Enter username and token when prompted
-
-# Option B: Using SSH key
-ssh-keygen -t ed25519
-cat ~/.ssh/id_ed25519.pub  # Add this to GitHub
-git remote set-url origin git@github.com:yourusername/your-project.git
-
-# 4. Create .env file if needed
-cd your-project
-cp .env.example .env.production
-# Edit .env.production with your settings
+# Run new version
+docker run -d \
+  --name sship \
+  -p 9999:9999 \
+  -v $(pwd)/sship.yaml:/app/sship.yaml \
+  ghcr.io/lambda0x63/sship:latest
 ```
 
-After initial setup, sship will handle all deployments automatically!
+### Binary Update
+```bash
+# Download new version (backup old one)
+mv sship sship.old
+curl -L https://github.com/lambda0x63/sship/releases/latest/download/sship-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m) -o sship
+chmod +x sship
+```
+
+## License
+
+MIT

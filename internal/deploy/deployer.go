@@ -146,6 +146,21 @@ func (d *Deployer) GetLogs(projectName string, lines string) (string, error) {
 	return client.DockerLogs(proj.Path, proj.DockerCompose, lines)
 }
 
+func (d *Deployer) GetEnvironmentVariables(projectName string) (map[string]string, error) {
+	proj, exists := d.config.Projects[projectName]
+	if !exists {
+		return nil, fmt.Errorf("프로젝트를 찾을 수 없습니다: %s", projectName)
+	}
+
+	client, err := ssh.NewClient(proj.Server)
+	if err != nil {
+		return nil, fmt.Errorf("SSH 연결 실패: %v", err)
+	}
+	defer client.Close()
+
+	return client.GetEnvironmentVariables(proj.Path, proj.DockerCompose)
+}
+
 func (d *Deployer) Rollback(projectName string) error {
 	proj, exists := d.config.Projects[projectName]
 	if !exists {

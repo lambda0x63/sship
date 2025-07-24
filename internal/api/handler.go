@@ -36,12 +36,13 @@ func NewHandler(cfg *config.Config) *Handler {
 }
 
 type ProjectInfo struct {
-	Name        string    `json:"name"`
-	Path        string    `json:"path"`
-	Status      string    `json:"status"`
-	LastDeploy  time.Time `json:"lastDeploy"`
-	Branch      string    `json:"branch"`
-	HealthCheck string    `json:"healthCheck"`
+	Name        string               `json:"name"`
+	Path        string               `json:"path"`
+	Status      string               `json:"status"`
+	LastDeploy  time.Time            `json:"lastDeploy"`
+	Branch      string               `json:"branch"`
+	HealthCheck string               `json:"healthCheck"`
+	Server      ssh.ConnectionConfig `json:"server"`
 }
 
 type DeployRequest struct {
@@ -71,6 +72,7 @@ func (h *Handler) ListProjects(c *gin.Context) {
 			Path:        proj.Path,
 			Branch:      proj.Branch,
 			HealthCheck: proj.HealthCheck,
+			Server:      proj.Server,
 		}
 		
 		client, err := ssh.NewClient(proj.Server)
@@ -129,6 +131,21 @@ func (h *Handler) GetProjectStatus(c *gin.Context) {
 		"commit":       currentCommit,
 		"healthCheck":  healthStatus,
 		"lastDeploy":   time.Now(),
+		"branch":       proj.Branch,
+	})
+}
+
+func (h *Handler) GetProjectEnvironment(c *gin.Context) {
+	projectName := c.Param("name")
+	
+	envVars, err := h.deployer.GetEnvironmentVariables(projectName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"environment": envVars,
 	})
 }
 

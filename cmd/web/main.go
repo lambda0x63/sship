@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -20,7 +19,7 @@ var (
 
 func main() {
 	var (
-		port        = flag.String("port", "8080", "웹 서버 포트")
+		port        = flag.String("port", "9999", "웹 서버 포트")
 		configPath  = flag.String("config", "sship.yaml", "설정 파일 경로")
 		showVersion = flag.Bool("version", false, "버전 정보 표시")
 	)
@@ -48,36 +47,20 @@ func main() {
 	router.StaticFS("/static", getStaticFS())
 	router.SetHTMLTemplate(loadHTMLTemplates())
 
-	// 초기 설정 체크 미들웨어
+	// 설정 공유 미들웨어
 	router.Use(func(c *gin.Context) {
-		path := c.Request.URL.Path
-		
-		// API 요청과 정적 파일은 체크하지 않음
-		if path == "/setup" || 
-		   len(path) >= 7 && path[:7] == "/api/v1" || 
-		   len(path) >= 7 && path[:7] == "/static" ||
-		   path == "/test-connection" {
-			c.Next()
-			return
-		}
-
-		// 프로젝트가 없으면 설정 페이지로
-		if len(cfg.Projects) == 0 && path != "/setup" {
-			c.Redirect(http.StatusTemporaryRedirect, "/setup")
-			c.Abort()
-			return
-		}
+		c.Set("config", cfg)
 		c.Next()
 	})
 
 	router.GET("/", web.IndexHandler)
-	router.GET("/setup", web.SetupHandler)
 	router.GET("/project/:name", web.ProjectHandler)
 
 	v1 := router.Group("/api/v1")
 	{
 		v1.GET("/projects", apiHandler.ListProjects)
 		v1.GET("/project/:name/status", apiHandler.GetProjectStatus)
+		v1.GET("/project/:name/environment", apiHandler.GetProjectEnvironment)
 		v1.POST("/project/:name/deploy", apiHandler.DeployProject)
 		v1.GET("/project/:name/logs", apiHandler.GetProjectLogs)
 		v1.POST("/project/:name/rollback", apiHandler.RollbackProject)
@@ -89,8 +72,7 @@ func main() {
 		v1.DELETE("/project/:name", apiHandler.DeleteProject)
 		v1.POST("/test-connection", apiHandler.TestConnection)
 		
-		// 배포 히스토리 및 상태 API
-		v1.GET("/project/:name/history", apiHandler.GetDeployHistory)
+		// 배포 상태 API
 		v1.GET("/deploy/active", apiHandler.GetActiveJobs)
 		v1.GET("/deploy/events", apiHandler.StreamDeployEvents)
 	}

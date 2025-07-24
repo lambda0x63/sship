@@ -1,5 +1,10 @@
-// 대시보드 JavaScript
+// 메인 페이지 (Dashboard) JavaScript
 
+// 전역 변수
+let deployEventSource = null;
+let activeDeployments = {}; // 진행 중인 배포 추적
+
+// 서비스 목록 로드
 async function loadServices() {
     const grid = document.getElementById('services-grid');
     
@@ -7,21 +12,23 @@ async function loadServices() {
         const response = await fetch('/api/v1/projects');
         const services = await response.json();
         
-        grid.innerHTML = '';
+        // 디버깅: API 응답 확인
+        console.log('API 응답:', services);
         
-        if (services.length === 0) {
+        // 서비스가 없는 경우
+        if (!services || services.length === 0) {
             grid.innerHTML = `
                 <div class="col-span-full">
-                    <div class="bg-white rounded-xl p-12 text-center border-2 border-dashed border-gray-300">
-                        <img src="/static/icon.png" alt="No services" class="w-20 h-20 mx-auto mb-4 opacity-30">
-                        <p class="text-gray-500 mb-2 text-lg font-medium">아직 등록된 서비스가 없습니다</p>
-                        <p class="text-gray-400 text-sm mb-6">첫 번째 서비스를 추가하여 배포를 시작하세요</p>
-                        <button onclick="showAddServiceModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm">
-                            🚀 첫 번째 서비스 추가하기
+                    <div class="bg-gray-50 rounded-xl p-8 text-center">
+                        <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        <p class="text-gray-600 mb-4">아직 등록된 서비스가 없습니다</p>
+                        <button onclick="showAddServiceModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            첫 서비스 추가하기
                         </button>
                     </div>
                 </div>`;
-            updateStats(0, 0, 0);
             return;
         }
         
@@ -30,9 +37,25 @@ async function loadServices() {
         const uniqueServers = [...new Set(services.map(s => `${s.server?.host}:${s.server?.port}`))].length;
         updateStats(services.length, activeCount, uniqueServers);
         
+        // VPS별로 서비스 그룹화
+        const servicesByVPS = {};
         services.forEach(service => {
-            const card = createServiceCard(service);
-            grid.appendChild(card);
+            const vpsKey = `${service.server?.host}:${service.server?.port}`;
+            if (!servicesByVPS[vpsKey]) {
+                servicesByVPS[vpsKey] = {
+                    host: service.server?.host || 'Unknown',
+                    port: service.server?.port || 22,
+                    services: []
+                };
+            }
+            servicesByVPS[vpsKey].services.push(service);
+        });
+        
+        // VPS별로 렌더링
+        grid.innerHTML = '';
+        Object.entries(servicesByVPS).forEach(([vpsKey, vpsData]) => {
+            const vpsSection = createVPSSection(vpsData);
+            grid.appendChild(vpsSection);
         });
     } catch (error) {
         console.error('서비스 로드 실패:', error);
@@ -49,61 +72,77 @@ async function loadServices() {
     }
 }
 
-function createServiceCard(service) {
-    const card = document.createElement('div');
-    card.className = 'service-card bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden';
-    card.onclick = () => window.location.href = `/project/${service.name}`;
+function createVPSSection(vpsData) {
+    const section = document.createElement('div');
+    section.className = 'col-span-full bg-white rounded-xl shadow-sm p-6 mb-6';
     
-    const statusClass = getStatusClass(service.status);
-    const statusIcon = getStatusIcon(service.status);
-    const statusText = getStatusText(service.status);
-    const lastDeployText = formatLastDeploy(service.lastDeploy);
+    const runningCount = vpsData.services.filter(s => s.status && s.status.includes('running')).length;
+    const totalCount = vpsData.services.length;
     
-    card.innerHTML = `
-        <div class="p-6">
-            <div class="flex items-start justify-between mb-4">
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-900">${service.name}</h3>
-                    <p class="text-sm text-gray-500 mt-1">${service.branch || 'main'} 브랜치</p>
-                </div>
-                <div class="${statusClass} w-10 h-10 rounded-full flex items-center justify-center">
-                    ${statusIcon}
-                </div>
-            </div>
-            
-            <div class="space-y-3">
-                <div class="flex items-center text-sm">
-                    <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
-                    </svg>
-                    <span class="text-gray-600 truncate">${service.server?.host || 'Unknown'}</span>
-                </div>
-                
-                <div class="flex items-center text-sm">
-                    <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                    </svg>
-                    <span class="text-gray-600 truncate">${service.path}</span>
-                </div>
-                
-                <div class="flex items-center text-sm">
-                    <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span class="text-gray-600">${lastDeployText}</span>
+    section.innerHTML = `
+        <div class="mb-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">${vpsData.host}</h3>
+                        <p class="text-sm text-gray-500">포트 ${vpsData.port} • ${runningCount}/${totalCount} 서비스 실행 중</p>
+                    </div>
                 </div>
             </div>
         </div>
-        
-        <div class="bg-gray-50 px-6 py-3 border-t border-gray-100">
-            <div class="flex items-center justify-between text-sm">
-                <span class="text-gray-500">상태</span>
-                <span class="font-medium ${getStatusTextClass(service.status)}">${statusText}</span>
-            </div>
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            ${vpsData.services.map(service => createServiceCard(service)).join('')}
         </div>
     `;
     
-    return card;
+    return section;
+}
+
+function createServiceCard(service) {
+    // 배포 중인지 확인
+    const isDeploying = activeDeployments[service.name];
+    
+    const statusClass = isDeploying ? 'bg-blue-100' : getStatusClass(service.status);
+    const statusIcon = isDeploying ? getDeployingIcon() : getStatusIcon(service.status);
+    const statusText = isDeploying ? '배포 중...' : getStatusText(service.status);
+    const lastDeployText = formatLastDeploy(service.lastDeploy);
+    
+    return `
+        <div class="service-card bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-all duration-200 cursor-pointer group relative" 
+             onclick="window.location.href='/project/${service.name}'">
+            <button onclick="event.stopPropagation(); deleteServiceFromDashboard('${service.name}')" 
+                    class="absolute top-2 right-2 p-1.5 text-red-600 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="서비스 삭제">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+            </button>
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex-1">
+                    <h4 class="font-medium text-gray-900">${service.name}</h4>
+                    <p class="text-sm text-gray-500">${service.branch || 'main'} 브랜치</p>
+                </div>
+                <div class="${statusClass} w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
+                    ${statusIcon}
+                </div>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+                <span class="text-gray-600">${statusText}</span>
+                <span class="text-gray-400">${lastDeployText}</span>
+            </div>
+            <div class="mt-2 text-xs text-gray-500 truncate">
+                <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+                ${service.path}
+            </div>
+        </div>
+    `;
 }
 
 function getStatusClass(status) {
@@ -120,12 +159,16 @@ function getStatusTextClass(status) {
 
 function getStatusIcon(status) {
     if (status && status.includes('running')) {
-        return '<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+        return '<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
     }
     if (status && status.includes('stopped')) {
-        return '<svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+        return '<svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
     }
-    return '<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+    return '<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+}
+
+function getDeployingIcon() {
+    return '<div class="animate-spin h-4 w-4 border-2 border-blue-600 rounded-full border-t-transparent"></div>';
 }
 
 function getStatusText(status) {
@@ -247,110 +290,125 @@ function showNotification(message, type, details) {
                     상세보기
                 </button>
             ` : ''}
+            <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-white hover:text-gray-200">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
         </div>
     `;
     
     document.body.appendChild(notification);
     
-    // 애니메이션
+    // 애니메이션으로 표시
     setTimeout(() => {
         notification.classList.remove('translate-x-full');
-        notification.classList.add('translate-x-0');
     }, 100);
     
-    // 3초 후 제거 (에러이고 상세내용이 있으면 5초)
-    const duration = hasDetails ? 5000 : 3000;
-    setTimeout(() => {
-        notification.classList.remove('translate-x-0');
-        notification.classList.add('translate-x-full');
-        setTimeout(() => notification.remove(), 300);
-    }, duration);
+    // 3초 후 자동 제거 (에러가 아닌 경우)
+    if (type !== 'error') {
+        setTimeout(() => {
+            notification.classList.add('translate-x-full');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
 }
 
 // 에러 상세 모달
 function showErrorDetailsModal(title, details) {
-    // 기존 모달 제거
-    const existingModal = document.getElementById('error-details-modal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
     const modal = document.createElement('div');
-    modal.id = 'error-details-modal';
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
     modal.innerHTML = `
-        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
-            <div class="p-6 border-b border-gray-200">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <h3 class="text-lg font-semibold text-gray-900">배포 오류 상세 정보</h3>
-                        <p class="text-sm text-gray-600 mt-1">${title}</p>
-                    </div>
-                    <button onclick="document.getElementById('error-details-modal').remove()" 
-                            class="text-gray-400 hover:text-gray-500">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
+        <div class="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div class="p-6 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">${title}</h3>
             </div>
-            <div class="p-6 overflow-y-auto flex-1">
-                <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono whitespace-pre-wrap overflow-x-auto">${escapeHtml(details)}</pre>
+            <div class="p-6 overflow-y-auto max-h-[60vh]">
+                <pre class="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-50 p-4 rounded">${details}</pre>
             </div>
-            <div class="p-6 border-t border-gray-200 bg-gray-50">
-                <button onclick="document.getElementById('error-details-modal').remove()" 
-                        class="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+            <div class="p-6 border-t bg-gray-50 flex justify-end">
+                <button onclick="this.closest('.fixed').remove()" 
+                        class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors">
                     닫기
                 </button>
             </div>
         </div>
     `;
-    
     document.body.appendChild(modal);
-    
-    // 모달 외부 클릭 시 닫기
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.remove();
-        }
-    });
 }
 
-// HTML 이스케이프 함수
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
+// 연결 테스트
+async function testConnection() {
+    const testBtn = document.getElementById('test-connection-btn');
+    const originalText = testBtn.textContent;
+    testBtn.disabled = true;
+    testBtn.textContent = '연결 테스트 중...';
+    
+    const connectionData = {
+        host: document.getElementById('modal-host').value,
+        port: parseInt(document.getElementById('modal-port').value),
+        user: document.getElementById('modal-user').value,
+        password: document.getElementById('modal-password').value
     };
-    return text.replace(/[&<>"']/g, m => map[m]);
+    
+    try {
+        const response = await fetch('/api/v1/test-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(connectionData)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            showSuccessNotification('SSH 연결 성공!');
+        } else {
+            showErrorNotification('SSH 연결 실패', result.error || result.message);
+        }
+    } catch (error) {
+        showErrorNotification('연결 테스트 실패', error.message);
+    } finally {
+        testBtn.disabled = false;
+        testBtn.textContent = originalText;
+    }
 }
 
-// SSE를 통한 실시간 배포 이벤트 수신
+// 실시간 배포 이벤트 연결
 function connectDeployEvents() {
-    const eventSource = new EventSource('/api/v1/deploy/events');
+    if (deployEventSource) {
+        deployEventSource.close();
+    }
     
-    eventSource.onmessage = (event) => {
+    deployEventSource = new EventSource('/api/v1/deploy/events');
+    
+    deployEventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
         handleDeployEvent(data);
     };
     
-    eventSource.onerror = (error) => {
+    deployEventSource.onerror = (error) => {
         console.error('SSE 연결 오류:', error);
-        // 5초 후 재연결 시도
+        // 5초 후 재연결
         setTimeout(connectDeployEvents, 5000);
     };
 }
 
 // 배포 이벤트 처리
 function handleDeployEvent(event) {
-    // 알림 표시
-    if (event.status === 'completed') {
-        showSuccessNotification(`${event.service} 배포가 완료되었습니다!`);
-    } else if (event.status === 'failed') {
-        showErrorNotification(`${event.service} 배포가 실패했습니다`, event.message);
+    console.log('배포 이벤트:', event);
+    
+    // 배포 상태 업데이트
+    if (event.status === 'started' || event.status === 'running') {
+        activeDeployments[event.service] = true;
+    } else if (event.status === 'completed' || event.status === 'failed') {
+        delete activeDeployments[event.service];
+        
+        // 알림 표시
+        if (event.status === 'completed') {
+            showSuccessNotification(`${event.service} 배포가 완료되었습니다!`);
+        } else {
+            showErrorNotification(`${event.service} 배포가 실패했습니다`, event.message);
+        }
     }
     
     // 서비스 목록 새로고침
@@ -358,149 +416,114 @@ function handleDeployEvent(event) {
     
     // 활성 배포 작업 업데이트
     updateActiveDeployments();
-    
-    // 최근 활동 업데이트
-    loadRecentActivities();
 }
 
 // 활성 배포 작업 표시
 async function updateActiveDeployments() {
     try {
         const response = await fetch('/api/v1/deploy/active');
-        const jobs = await response.json();
+        const activeJobs = await response.json();
         
-        // 활성 작업이 있으면 표시
-        if (jobs && jobs.length > 0) {
-            showActiveDeploymentsBanner(jobs);
-        } else {
-            hideActiveDeploymentsBanner();
+        // 활성 배포 상태 업데이트
+        activeDeployments = {};
+        if (activeJobs) {
+            Object.keys(activeJobs).forEach(jobId => {
+                const job = activeJobs[jobId];
+                if (job.service) {
+                    activeDeployments[job.service] = true;
+                }
+            });
         }
-    } catch (error) {
-        console.error('활성 배포 조회 실패:', error);
-    }
-}
-
-// 활성 배포 배너 표시
-function showActiveDeploymentsBanner(jobs) {
-    let banner = document.getElementById('active-deployments-banner');
-    if (!banner) {
-        banner = document.createElement('div');
-        banner.id = 'active-deployments-banner';
-        banner.className = 'bg-blue-50 border-l-4 border-blue-400 p-4 mb-6';
-        const mainContent = document.querySelector('main');
-        mainContent.insertBefore(banner, mainContent.firstChild);
-    }
-    
-    const jobsHtml = jobs.map(job => `
-        <div class="flex items-center justify-between py-2">
-            <div class="flex items-center">
-                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
-                <span class="text-sm font-medium text-blue-800">${job.service_name}</span>
-                <span class="text-sm text-blue-600 ml-2">${job.status === 'running' ? '배포 중...' : '대기 중'}</span>
-            </div>
-            <span class="text-xs text-blue-600">${formatTime(job.started_at)}</span>
-        </div>
-    `).join('');
-    
-    banner.innerHTML = `
-        <div class="flex items-center justify-between mb-2">
-            <h3 class="text-sm font-medium text-blue-800">진행 중인 배포</h3>
-            <button onclick="hideActiveDeploymentsBanner()" class="text-blue-600 hover:text-blue-800">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-        ${jobsHtml}
-    `;
-}
-
-function hideActiveDeploymentsBanner() {
-    const banner = document.getElementById('active-deployments-banner');
-    if (banner) {
-        banner.remove();
-    }
-}
-
-function formatTime(timestamp) {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-}
-
-// 최근 활동 로드
-async function loadRecentActivities() {
-    try {
-        // 모든 서비스의 최근 히스토리를 가져와서 통합
-        const response = await fetch('/api/v1/config');
-        const config = await response.json();
         
-        const allActivities = [];
+        // 활성 배포 수 업데이트
+        const activeCount = Object.keys(activeDeployments).length;
+        const badge = document.getElementById('active-deployments-badge');
         
-        // 각 서비스의 최근 활동 가져오기
-        for (const serviceName of Object.keys(config.projects || {})) {
-            const historyResponse = await fetch(`/api/v1/project/${serviceName}/history?limit=3`);
-            if (historyResponse.ok) {
-                const history = await historyResponse.json();
-                history.forEach(job => {
-                    allActivities.push({
-                        ...job,
-                        service: serviceName
-                    });
-                });
+        if (badge) {
+            if (activeCount > 0) {
+                badge.textContent = activeCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
             }
         }
         
-        // 시간순 정렬
-        allActivities.sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
-        
-        // 최근 5개만 표시
-        const recentActivities = allActivities.slice(0, 5);
-        const activitiesDiv = document.getElementById('recent-activities');
-        
-        if (recentActivities.length === 0) {
-            activitiesDiv.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">활동 기록이 없습니다</p>';
-            return;
-        }
-        
-        activitiesDiv.innerHTML = recentActivities.map(activity => {
-            const statusIcon = activity.status === 'completed' ? '✅' : 
-                             activity.status === 'failed' ? '❌' : '⏳';
-            const timeAgo = getRelativeTime(new Date(activity.started_at));
-            
-            return `
-                <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm">${statusIcon}</span>
-                        <span class="text-sm text-gray-700">${activity.service}</span>
-                    </div>
-                    <span class="text-xs text-gray-500">${timeAgo}</span>
-                </div>
-            `;
-        }).join('');
-        
+        // 서비스 목록 새로고침
+        loadServices();
     } catch (error) {
-        console.error('최근 활동 로드 실패:', error);
+        console.error('활성 배포 상태 확인 실패:', error);
     }
 }
 
-// 상대 시간 계산
-function getRelativeTime(date) {
+// 유틸리티 함수들
+function formatDateTime(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function getRelativeTime(timestamp) {
+    const date = new Date(timestamp);
     const now = new Date();
-    const diff = now - date;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
+    const diff = Math.floor((now - date) / 1000); // 초 단위
     
-    if (days > 0) return `${days}일 전`;
-    if (hours > 0) return `${hours}시간 전`;
-    if (minutes > 0) return `${minutes}분 전`;
-    return '방금 전';
+    if (diff < 60) return '방금 전';
+    
+    const minutes = Math.floor(diff / 60);
+    if (minutes < 60) return `${minutes}분 전`;
+    
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}시간 전`;
+    
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}일 전`;
+    
+    const weeks = Math.floor(days / 7);
+    if (weeks < 4) return `${weeks}주 전`;
+    
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months}개월 전`;
+    
+    return date.toLocaleDateString('ko-KR');
+}
+
+// 대시보드에서 서비스 삭제
+async function deleteServiceFromDashboard(serviceName) {
+    const confirmMessage = `'${serviceName}' 서비스를 sship에서 제거하시겠습니까?\n\n` +
+                          `⚠️ sship 설정에서만 제거됩니다.\n` +
+                          `VPS의 실제 파일과 컨테이너는 그대로 유지됩니다.`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/v1/project/${serviceName}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            showSuccessNotification('서비스가 삭제되었습니다');
+            // 서비스 목록 새로고침
+            loadServices();
+        } else {
+            showErrorNotification('서비스 삭제 실패', result.error || result.message);
+        }
+    } catch (error) {
+        showErrorNotification('서비스 삭제 중 오류 발생', error.message);
+    }
 }
 
 // 페이지 로드 시 서비스 목록 불러오기
 document.addEventListener('DOMContentLoaded', () => {
     loadServices();
-    loadRecentActivities();
     
     // 실시간 배포 이벤트 연결
     connectDeployEvents();
@@ -510,28 +533,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 30초마다 자동 새로고침
     setInterval(loadServices, 30000);
-    setInterval(loadRecentActivities, 30000);
     
     // 서비스 추가 폼 이벤트 리스너
     const addServiceForm = document.getElementById('add-service-form');
     if (addServiceForm) {
         addServiceForm.addEventListener('submit', handleAddService);
     }
-    
-    // 모달 외부 클릭 시 닫기
-    const modal = document.getElementById('add-service-modal');
-    if (modal) {
-        modal.addEventListener('click', (e) => {
-            if (e.target.id === 'add-service-modal') {
-                hideAddServiceModal();
-            }
-        });
-    }
-    
-    // ESC 키로 모달 닫기
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            hideAddServiceModal();
-        }
-    });
 });

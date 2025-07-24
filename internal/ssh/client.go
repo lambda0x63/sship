@@ -3,6 +3,7 @@ package ssh
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -17,10 +18,10 @@ type Client struct {
 }
 
 type ConnectionConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	User     string `json:"user"`
+	Password string `json:"password"`
 }
 
 func NewClient(config ConnectionConfig) (*Client, error) {
@@ -171,13 +172,32 @@ func (c *Client) ExecuteCommandWithStreaming(command string, output io.Writer) e
 }
 
 func (c *Client) DockerComposeUpWithStreaming(projectPath string, composeFile string, output io.Writer) error {
-	// 안전하게 기존 스택 정리 후 새로 시작
-	fmt.Fprintf(output, "🧹 기존 스택 정리...\n")
+	// 파일 존재 확인
+	fmt.Fprintf(output, "📋 Docker Compose 파일 확인...\n")
+	checkCmd := fmt.Sprintf("cd %s && ls -la %s", projectPath, composeFile)
+	c.ExecuteCommandWithStreaming(checkCmd, output)
+	
+	// 기존 컨테이너 확인
+	fmt.Fprintf(output, "\n🔍 기존 컨테이너 확인...\n")
+	psCmd := fmt.Sprintf("cd %s && docker compose -f %s ps", projectPath, composeFile)
+	c.ExecuteCommandWithStreaming(psCmd, output)
+	
+	// 안전하게 기존 스택 정리
+	fmt.Fprintf(output, "\n🧹 기존 스택 정리...\n")
 	downCmd := fmt.Sprintf("cd %s && docker compose -f %s down --remove-orphans", 
 		projectPath, composeFile)
-	c.ExecuteCommandWithStreaming(downCmd, output)
 	
-	fmt.Fprintf(output, "🚀 새로운 스택 빌드 및 시작...\n")
+	if err := c.ExecuteCommandWithStreaming(downCmd, output); err != nil {
+		fmt.Fprintf(output, "⚠️ Docker Compose down 실패: %v\n", err)
+		
+		// 프로젝트명 기반으로 컨테이너 직접 제거 시도
+		fmt.Fprintf(output, "🔧 컨테이너 직접 제거 시도...\n")
+		projectName := filepath.Base(projectPath)
+		removeCmd := fmt.Sprintf("docker ps -a --filter 'name=%s' -q | xargs -r docker rm -f", projectName)
+		c.ExecuteCommandWithStreaming(removeCmd, output)
+	}
+	
+	fmt.Fprintf(output, "\n🚀 새로운 스택 빌드 및 시작...\n")
 	upCmd := fmt.Sprintf("cd %s && docker compose -f %s up -d --build", 
 		projectPath, composeFile)
 	
@@ -201,7 +221,8 @@ func (c *Client) CheckContainerStatus(projectPath string, composeFile string) (s
 }
 
 func (c *Client) GetCurrentCommit(projectPath string) (string, error) {
-	command := fmt.Sprintf("cd %s && git rev-parse --short HEAD 2>/dev/null || echo 'unknown'", projectPath)
+	// 커밋 해시와 메시지를 함께 가져오기
+	command := fmt.Sprintf("cd %s && git log -1 --pretty=format:'%%h|%%s' 2>/dev/null || echo 'unknown|'", projectPath)
 	output, err := c.ExecuteCommand(command)
 	if err != nil {
 		return "unknown", nil
@@ -223,4 +244,43 @@ func (c *Client) DockerLogs(projectPath string, composeFile string, lines string
 	command := fmt.Sprintf("cd %s && docker compose -f %s logs --tail %s", 
 		projectPath, composeFile, lines)
 	return c.ExecuteCommand(command)
+}
+
+// GetEnvironmentVariables Docker Compose 프로젝트의 환경변수를 조회합니다
+func (c *Client) GetEnvironmentVariables(projectPath string, composeFile string) (map[string]string, error) {
+	// 환경변수를 저장할 맵
+	envVars := make(map[string]string)
+
+	// docker compose env 명령으로 환경변수 직접 조회
+	envCommand := fmt.Sprintf("cd %s && docker compose -f %s run --rm --no-deps $(docker compose -f %s config --services | head -1) env | grep -E '^[A-Z_]+=.+' | sort", 
+		projectPath, composeFile, composeFile)
+	envOutput, err := c.ExecuteCommand(envCommand)
+	if err != nil {
+		// 실패시 대안으로 .env 파일 읽기 시도
+		dotEnvCommand := fmt.Sprintf("cd %s && [ -f .env ] && cat .env | grep -v '^#' | grep -E '^[A-Z_]+=.+' || echo ''", projectPath)
+		envOutput, _ = c.ExecuteCommand(dotEnvCommand)
+	}
+
+	// 환경변수 파싱
+	lines := strings.Split(strings.TrimSpace(envOutput), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			
+			// 따옴표 제거
+			value = strings.Trim(value, "\"'")
+			
+			// 마스킹 없이 그대로 저장
+			envVars[key] = value
+		}
+	}
+
+	return envVars, nil
 }
