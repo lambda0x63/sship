@@ -1,0 +1,10 @@
+# .gitattributes
+cmd/web/static/js/*.js linguist-vendored
+cmd/web/static/css/*.css linguist-vendored
+cmd/web/templates/*.html linguist-vendored
+*.js linguist-documentation
+*.css linguist-documentation
+*.html linguist-documentation
+*.go linguist-language=Go
+cmd/web/static/* linguist-vendored
+cmd/web/templates/* linguist-vendored
