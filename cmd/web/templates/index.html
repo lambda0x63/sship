@@ -6,6 +6,7 @@
     <title>{{.title}}</title>
     <link rel="icon" type="image/png" href="/static/icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -22,9 +23,10 @@
             0%, 100% { opacity: 1; }
             50% { opacity: .5; }
         }
+        [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50" x-data="dashboardApp()">
     <!-- Header -->
     <header class="bg-white shadow-sm border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -54,7 +56,7 @@
                             <h2 class="text-xl font-semibold text-gray-900">서비스 목록</h2>
                             <p class="text-sm text-gray-500 mt-1">Docker Compose로 배포된 서비스들을 관리하세요</p>
                         </div>
-                        <button onclick="showAddServiceModal()" 
+                        <button @click="showModal = true" 
                                 class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
                             새 서비스 추가
                         </button>
@@ -62,17 +64,88 @@
                 </div>
 
                 <!-- 서비스 그리드 -->
-                <div id="services-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- 서비스 카드들이 동적으로 로드됨 -->
-                    <div class="col-span-full">
-                        <div class="bg-white rounded-xl p-12 text-center border-2 border-dashed border-gray-300">
-                            <img src="/static/icon.png" alt="Loading" class="w-16 h-16 mx-auto mb-4 opacity-50 animate-pulse">
-                            <p class="text-gray-500 mb-2">서비스를 불러오는 중...</p>
-                            <div class="flex justify-center">
-                                <div class="status-indicator w-2 h-2 bg-gray-400 rounded-full"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- 로딩 상태 -->
+                    <template x-if="loading">
+                        <div class="col-span-full">
+                            <div class="bg-white rounded-xl p-12 text-center border-2 border-dashed border-gray-300">
+                                <img src="/static/icon.png" alt="Loading" class="w-16 h-16 mx-auto mb-4 opacity-50 animate-pulse">
+                                <p class="text-gray-500 mb-2">서비스를 불러오는 중...</p>
+                                <div class="flex justify-center">
+                                    <div class="status-indicator w-2 h-2 bg-gray-400 rounded-full"></div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </template>
+
+                    <!-- 서비스가 없을 때 -->
+                    <template x-if="!loading && services.length === 0">
+                        <div class="col-span-full">
+                            <div class="bg-gray-50 rounded-xl p-8 text-center">
+                                <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                <p class="text-gray-600 mb-4">아직 등록된 서비스가 없습니다</p>
+                                <button @click="showModal = true" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                    첫 서비스 추가하기
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- 서비스 카드들 -->
+                    <template x-for="service in services" :key="service.name">
+                        <div class="service-card bg-white rounded-xl shadow-md hover:shadow-lg p-6 cursor-pointer border border-gray-100"
+                             @click="window.location.href = `/project/${service.name}`">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900" x-text="service.name"></h3>
+                                    <p class="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path>
+                                        </svg>
+                                        <span x-text="`${service.server?.host}:${service.server?.port || 22}`"></span>
+                                    </p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <template x-if="activeDeployments[service.name]">
+                                        <div class="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium">
+                                            <div class="animate-spin h-3 w-3 border-2 border-blue-600 rounded-full border-t-transparent"></div>
+                                            배포 중
+                                        </div>
+                                    </template>
+                                    <template x-if="!activeDeployments[service.name]">
+                                        <div :class="{
+                                            'text-green-600 bg-green-50': service.status?.includes('running'),
+                                            'text-gray-600 bg-gray-50': !service.status?.includes('running')
+                                        }" class="px-3 py-1 rounded-full text-xs font-medium">
+                                            <span x-text="getStatusText(service.status)"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-2 text-sm">
+                                <div class="flex items-center gap-2 text-gray-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                    </svg>
+                                    <span x-text="service.path || '-'"></span>
+                                </div>
+                                <div class="flex items-center gap-2 text-gray-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                    </svg>
+                                    <span x-text="service.branch || 'main'"></span>
+                                </div>
+                                <div class="mt-3 pt-3 border-t border-gray-100">
+                                    <p class="text-xs text-gray-500">
+                                        마지막 배포: <span x-text="formatLastDeploy(service.lastDeploy)"></span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </div>
 
@@ -84,30 +157,32 @@
                     <div class="space-y-4">
                         <div class="flex justify-between items-center py-3 border-b border-gray-100">
                             <span class="text-sm text-gray-600">전체 서비스</span>
-                            <span class="text-xl font-bold text-gray-900" id="total-services">0</span>
+                            <span class="text-xl font-bold text-gray-900" x-text="stats.total"></span>
                         </div>
                         <div class="flex justify-between items-center py-3 border-b border-gray-100">
                             <span class="text-sm text-gray-600">활성 서비스</span>
-                            <span class="text-xl font-bold text-green-600" id="active-services">0</span>
+                            <span class="text-xl font-bold text-green-600" x-text="stats.active"></span>
                         </div>
                         <div class="flex justify-between items-center py-3">
                             <span class="text-sm text-gray-600">연결된 서버</span>
-                            <span class="text-xl font-bold text-purple-600" id="connected-servers">0</span>
+                            <span class="text-xl font-bold text-purple-600" x-text="stats.servers"></span>
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
     </main>
 
     <!-- Add Service Modal -->
-    <div id="add-service-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden">
+    <div x-show="showModal" x-cloak
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+         @click.self="showModal = false">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden"
+             @click.stop>
             <div class="p-6 border-b border-gray-200">
                 <div class="flex justify-between items-center">
                     <h2 class="text-xl font-semibold text-gray-900">새 서비스 추가</h2>
-                    <button onclick="hideAddServiceModal()" class="text-gray-400 hover:text-gray-500">
+                    <button @click="showModal = false" class="text-gray-400 hover:text-gray-500">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
@@ -115,10 +190,10 @@
                 </div>
             </div>
 
-            <form id="add-service-form" class="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+            <form @submit.prevent="addService" class="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)]">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">서비스 이름</label>
-                    <input type="text" id="modal-service-name" required 
+                    <input type="text" x-model="formData.name" required 
                            placeholder="예: web-app, api-server"
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
@@ -128,24 +203,24 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">호스트 주소</label>
-                            <input type="text" id="modal-host" required 
+                            <input type="text" x-model="formData.server.host" required 
                                    placeholder="192.168.1.100"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">SSH 포트</label>
-                            <input type="number" id="modal-port" value="22" required 
+                            <input type="number" x-model.number="formData.server.port" required 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">사용자명</label>
-                            <input type="text" id="modal-user" required 
+                            <input type="text" x-model="formData.server.user" required 
                                    placeholder="root"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
-                            <input type="password" id="modal-password" required 
+                            <input type="password" x-model="formData.server.password" required 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
                     </div>
@@ -155,43 +230,41 @@
                     <h3 class="text-sm font-medium text-gray-900">서비스 설정</h3>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">서비스 경로</label>
-                        <input type="text" id="modal-path" required 
+                        <input type="text" x-model="formData.path" required 
                                placeholder="/root/my-app"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Git 브랜치</label>
-                            <input type="text" id="modal-branch" value="main" required 
+                            <input type="text" x-model="formData.branch" required 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Docker Compose 파일</label>
-                            <input type="text" id="modal-docker-compose" value="docker-compose.prod.yml" required 
+                            <input type="text" x-model="formData.docker_compose" required 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">헬스체크 URL (선택)</label>
-                        <input type="text" id="modal-health-check" 
+                        <input type="text" x-model="formData.health_check" 
                                placeholder="https://example.com/health"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
                 </div>
-            </form>
 
-            <div class="p-6 border-t border-gray-200 bg-gray-50">
                 <div class="flex gap-3">
-                    <button type="submit" form="add-service-form"
+                    <button type="submit"
                             class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
                         서비스 추가
                     </button>
-                    <button type="button" onclick="hideAddServiceModal()" 
+                    <button type="button" @click="showModal = false" 
                             class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium">
                         취소
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 
