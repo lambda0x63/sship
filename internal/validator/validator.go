@@ -37,7 +37,7 @@ func (v *PreDeployValidator) Validate(projectName string) (*ValidationResult, er
 		return nil, fmt.Errorf("프로젝트를 찾을 수 없습니다: %s", projectName)
 	}
 
-	client, err := ssh.NewClient(v.config.Server)
+	client, err := ssh.NewClient(proj.Server)
 	if err != nil {
 		return nil, fmt.Errorf("SSH 연결 실패: %v", err)
 	}

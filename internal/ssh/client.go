@@ -231,7 +231,7 @@ func (c *Client) GetCurrentCommit(projectPath string) (string, error) {
 }
 
 func (c *Client) GetLastDeployTime(projectPath string) (time.Time, error) {
-	command := fmt.Sprintf("cd %s && cat .backup_timestamp 2>/dev/null || echo ''")
+	command := fmt.Sprintf("cd %s && cat .backup_timestamp 2>/dev/null || echo ''", projectPath)
 	output, err := c.ExecuteCommand(command)
 	if err != nil || strings.TrimSpace(output) == "" {
 		return time.Time{}, nil
@@ -246,41 +246,3 @@ func (c *Client) DockerLogs(projectPath string, composeFile string, lines string
 	return c.ExecuteCommand(command)
 }
 
-// GetEnvironmentVariables Docker Compose 프로젝트의 환경변수를 조회합니다
-func (c *Client) GetEnvironmentVariables(projectPath string, composeFile string) (map[string]string, error) {
-	// 환경변수를 저장할 맵
-	envVars := make(map[string]string)
-
-	// docker compose env 명령으로 환경변수 직접 조회
-	envCommand := fmt.Sprintf("cd %s && docker compose -f %s run --rm --no-deps $(docker compose -f %s config --services | head -1) env | grep -E '^[A-Z_]+=.+' | sort", 
-		projectPath, composeFile, composeFile)
-	envOutput, err := c.ExecuteCommand(envCommand)
-	if err != nil {
-		// 실패시 대안으로 .env 파일 읽기 시도
-		dotEnvCommand := fmt.Sprintf("cd %s && [ -f .env ] && cat .env | grep -v '^#' | grep -E '^[A-Z_]+=.+' || echo ''", projectPath)
-		envOutput, _ = c.ExecuteCommand(dotEnvCommand)
-	}
-
-	// 환경변수 파싱
-	lines := strings.Split(strings.TrimSpace(envOutput), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) == 2 {
-			key := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
-			
-			// 따옴표 제거
-			value = strings.Trim(value, "\"'")
-			
-			// 마스킹 없이 그대로 저장
-			envVars[key] = value
-		}
-	}
-
-	return envVars, nil
-}

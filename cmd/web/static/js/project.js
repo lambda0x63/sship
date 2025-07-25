@@ -184,9 +184,19 @@ function projectApp(projectName) {
             try {
                 const response = await fetch(`/api/v1/project/${this.projectName}/environment`);
                 const data = await response.json();
-                this.envVars = data.content || '';
+                
+                // environment는 key-value 객체로 반환됨
+                if (data.environment && Object.keys(data.environment).length > 0) {
+                    // 환경변수를 key=value 형태로 변환
+                    this.envVars = Object.entries(data.environment)
+                        .map(([key, value]) => `${key}=${value}`)
+                        .sort()
+                        .join('\n');
+                } else {
+                    this.envVars = null;
+                }
             } catch (error) {
-                this.envVars = '환경 변수를 가져올 수 없습니다';
+                this.envVars = '환경 변수를 가져올 수 없습니다: ' + error.message;
             } finally {
                 this.loadingEnvVars = false;
             }

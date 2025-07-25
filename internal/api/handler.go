@@ -140,9 +140,17 @@ func (h *Handler) GetProjectEnvironment(c *gin.Context) {
 	
 	envVars, err := h.deployer.GetEnvironmentVariables(projectName)
 	if err != nil {
+		fmt.Printf("GetProjectEnvironment error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	
+	// envVars가 nil이거나 비어있는 경우 빈 맵으로 초기화
+	if envVars == nil {
+		envVars = make(map[string]string)
+	}
+	
+	fmt.Printf("GetProjectEnvironment: returning %d environment variables\n", len(envVars))
 	
 	c.JSON(http.StatusOK, gin.H{
 		"environment": envVars,
