@@ -6,60 +6,128 @@
   
   # sship
   
-  **Simple SSH deployment tool for Docker Compose projects**
+  **Streamlined Self-Hosted Infrastructure Platform**
   <br>
 </div>
 
-## What is sship?
+## Overview
 
-sship pulls your code from GitHub and runs `docker compose up` on your VPS. That's it.
+A lightweight CI/CD orchestration tool designed for efficient Docker-based deployment workflows. Built with a focus on simplicity, reliability, and real-time monitoring capabilities for self-hosted environments.
+
+## Core Architecture
+
+### Deployment Pipeline
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌──────────────┐
+│   Trigger   │────▶│ Git Pull &   │────▶│   Docker    │────▶│   Health     │
+│  (Manual/   │     │ Branch Check │     │  Compose    │     │   Check &    │
+│   Webhook)  │     │              │     │   Deploy    │     │  Monitoring  │
+└─────────────┘     └──────────────┘     └─────────────┘     └──────────────┘
+                           │                      │                     │
+                           ▼                      ▼                     ▼
+                    ┌──────────────┐     ┌─────────────┐     ┌──────────────┐
+                    │   Rollback   │     │   Service   │     │  Real-time   │
+                    │  Capability  │     │   Status    │     │   Logging    │
+                    └──────────────┘     └─────────────┘     └──────────────┘
+```
+
+## Key Features
+
+### Infrastructure Management
+- **SSH-based Remote Execution**: Secure command execution with configurable connection pooling
+- **Multi-Project Support**: Centralized management for multiple deployment targets
+- **Environment Isolation**: Project-specific configuration with environment variable management
+
+### Deployment Capabilities
+- **Zero-Downtime Deployment**: Docker Compose-based blue-green deployment strategy
+- **Automated Rollback**: Git-based rollback mechanism with deployment history tracking
+- **Health Check Integration**: Configurable health monitoring with automatic failure detection
+
+### Monitoring & Observability
+- **Real-time Log Streaming**: WebSocket-based live log aggregation
+- **Deployment Event Tracking**: Comprehensive audit trail of all deployment activities
+- **Service Status Dashboard**: At-a-glance view of all managed services
+
+## Technical Implementation
+
+### Core Components
+
+1. **Deployment Engine** (`internal/deploy/`)
+   - Orchestrates the complete deployment lifecycle
+   - Manages SSH connections and remote command execution
+   - Implements retry logic and failure recovery
+
+2. **Configuration Management** (`internal/config/`)
+   - YAML-based declarative configuration
+   - Runtime configuration validation
+   - Secure credential management
+
+3. **API Layer** (`internal/api/`)
+   - RESTful API for deployment operations
+   - WebSocket endpoints for real-time updates
+   - JWT-based authentication (optional)
+
+4. **Web Interface** (`cmd/web/`)
+   - Responsive dashboard for deployment management
+   - Real-time deployment progress visualization
+   - Interactive log viewer with filtering capabilities
+
+## Deployment Flow
+
+### Standard Deployment Process
+
+1. **Pre-deployment Validation**
+   - Configuration syntax verification
+   - SSH connectivity check
+   - Target directory existence validation
+
+2. **Source Code Synchronization**
+   - Git repository pull with branch verification
+   - Conflict detection and resolution strategy
+   - Submodule update handling
+
+3. **Container Orchestration**
+   - Docker image building (if required)
+   - Service dependency resolution
+   - Rolling update execution
+
+4. **Post-deployment Operations**
+   - Health check execution
+   - Service availability verification
+   - Notification dispatch
 
 ## Quick Start
 
-### 1. Prerequisites on VPS
+### Prerequisites on Target Server
 
 ```bash
 # SSH into your VPS
-ssh root@your-vps.com
+ssh root@your-server.com
 
 # Clone your project
 git clone https://github.com/yourusername/your-project.git
 cd your-project
 
+# Prepare Docker Compose configuration
 # Create docker-compose.prod.yml
 # Create .env.production if needed
 ```
 
-### 2. Install sship
+### Installation
 
-#### Option 1: Docker (Recommended)
+#### Docker (Recommended)
+
 ```bash
-# Run with Docker image
 docker run -d \
   --name sship \
   -p 9999:9999 \
   -v $(pwd)/sship.yaml:/app/sship.yaml \
   ghcr.io/lambda0x63/sship:latest
-
-# Or create docker-compose.yml
-cat > docker-compose.yml << EOF
-version: '3.8'
-services:
-  sship:
-    image: ghcr.io/lambda0x63/sship:latest
-    container_name: sship
-    ports:
-      - "9999:9999"
-    volumes:
-      - ./sship.yaml:/app/sship.yaml
-    restart: unless-stopped
-EOF
-
-# Run
-docker compose up -d
 ```
 
-#### Option 2: Binary Download
+#### Binary Installation
+
 ```bash
 # Linux (amd64)
 curl -L https://github.com/lambda0x63/sship/releases/latest/download/sship-linux-amd64 -o sship
@@ -69,53 +137,42 @@ chmod +x sship
 curl -L https://github.com/lambda0x63/sship/releases/latest/download/sship-darwin-arm64 -o sship
 chmod +x sship
 
-# macOS (Intel)
-curl -L https://github.com/lambda0x63/sship/releases/latest/download/sship-darwin-amd64 -o sship
-chmod +x sship
-
-# Run (default port: 9999)
-./sship
-```
-
-#### Option 3: Homebrew (macOS)
-```bash
-# Install
-brew tap lambda0x63/sship
-brew install sship
-
 # Run
-sship
+./sship -port 9999
 ```
 
-### 3. Add Service
+## Configuration
 
-1. Open http://localhost:9999
-2. Click "새 서비스 추가" (Add Service)
-3. Fill in:
-   - Service name
-   - VPS connection (host, port, user, password)
-   - Project path (e.g., `/root/your-project`)
-   - Docker Compose file (default: `docker-compose.prod.yml`)
+### Project Configuration Structure
 
-### 4. Deploy
+```yaml
+projects:
+  production-app:
+    server:
+      host: production.example.com
+      port: 22
+      user: deploy
+      password: ${SSH_PASSWORD}  # Environment variable support
+    path: /opt/applications/app
+    branch: main
+    docker_compose: docker-compose.prod.yml
+    health_check: "curl -f http://localhost:3000/health || exit 1"
+    env_file: .env.production
+```
 
-Click "🚀 배포하기" button. Done!
+## Advanced Features
 
-## Features
+### Deployment Strategies
 
-- 🚀 One-click deployment
-- 📊 Real-time deployment logs
-- 🔍 Service status monitoring
-- 🔐 Environment variables viewer
-- 🗑️ Easy service management
+- **Blue-Green Deployment**: Minimizes downtime through parallel environment switching
+- **Canary Releases**: Gradual rollout with configurable traffic splitting (roadmap)
+- **Feature Flags**: Runtime feature toggling without redeployment (roadmap)
 
-## How it Works
+### Security Considerations
 
-When you deploy:
-1. SSH into your VPS
-2. `git pull` latest code
-3. `docker compose down` (safely)
-4. `docker compose up -d --build`
+- **Credential Management**: Secure storage of SSH credentials
+- **Audit Logging**: Comprehensive activity logging
+- **Network Isolation**: SSH tunnel support for secure communication
 
 ## Build from Source
 
@@ -123,66 +180,16 @@ When you deploy:
 git clone https://github.com/lambda0x63/sship.git
 cd sship
 
-# Local build
+# Build binary
 go build -o sship ./cmd/web
-
-# Or build for multiple platforms
-make build-all
 
 # Build Docker image
 docker build -t sship:local .
-```
 
-## Runtime Options
-
-### Binary
-```bash
-# Custom port
-./sship -port 8080
-
-# Custom config file
-./sship -config myconfig.yaml
-
-# Show version
-./sship -version
-```
-
-### Docker
-```bash
-# Custom port and config
-docker run -d \
-  --name sship \
-  -p 8080:9999 \
-  -v $(pwd)/myconfig.yaml:/app/sship.yaml \
-  ghcr.io/lambda0x63/sship:latest
-```
-
-## Updating
-
-### Docker Update
-```bash
-# Pull latest image
-docker pull ghcr.io/lambda0x63/sship:latest
-
-# Stop and remove old container
-docker stop sship && docker rm sship
-
-# Run new version
-docker run -d \
-  --name sship \
-  -p 9999:9999 \
-  -v $(pwd)/sship.yaml:/app/sship.yaml \
-  ghcr.io/lambda0x63/sship:latest
-```
-
-### Binary Update
-```bash
-# Download new version (backup old one)
-mv sship sship.old
-curl -L https://github.com/lambda0x63/sship/releases/latest/download/sship-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m) -o sship
-chmod +x sship
+# Cross-platform builds
+make build-all
 ```
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) for details.
