@@ -1,38 +1,39 @@
-# sship
+<div align="right">
+  <a href="https://github.com/lambda0x63/sship">GitHub</a> | 
+  <a href="https://github.com/lambda0x63/sship/pkgs/container/sship">GitHub Packages</a>
+</div>
 
-Docker 및 SSH 기반의 경량형 CD(Continuous Deployment) 및 원격 서버 관리 도구.
-복잡한 CI/CD 파이프라인 구축 없이, 웹 대시보드에서 클릭 한 번으로 원격 서버 배포 및 관리 수행.
+<div align="center">
+  <br/>
+  <img src="assets/icon.png" width="120" height="120" alt="sship Logo">
+  <h1>sship</h1>
+  <p><b>Streamlined Self-Hosting Infrastructure Platform</b></p>
+  <p>Docker 및 SSH 기반의 경량형 CD 및 원격 서버 관리 도구</p>
+  <br/>
+</div>
 
-## 시스템 개요 (System Overview)
+<hr/>
 
-### 핵심 기능 (Key Features)
-**원격 배포 자동화 (Auto Deployment)**
-- **SSH Protocol** 기반의 안전한 원격 명령 실행
-- **Docker Compose** 연동을 통한 컨테이너 오케스트레이션 자동화
-- **Git Integration** 최신 코드 풀(Pull) 및 버전 관리
+## Overview
 
-**프로덕션 관리 도구 (Operations)**
-- **Real-time Logs** WebSocket을 이용한 실시간 컨테이너 로그 스트리밍
-- **Instant Rollback** 배포 실패 시 이전 커밋으로 즉시 복구(Rollback) 지원
-- **Health Check** 배포 후 서비스 상태 자동 점검 기능
+Docker 기반 배포를 위한 경량 CI/CD 오케스트레이션 도구. 별도의 에이전트 설치 없이 SSH 기반 원격 실행을 통해 원클릭으로 VPS에 애플리케이션을 배포하고 관리할 수 있습니다.
 
-**멀티 프로젝트 관리 (Multi-Project)**
-- YAML 설정 기반의 다중 프로젝트/서버 중앙 관리
-- 웹 기반 대시보드(Web UI)를 통한 직관적 제어
+<br/>
 
-## 기술 스택 (Tech Stack)
+## Key Features
 
-- **Language** Go 1.24
-- **Web Framework** Gin (High-performance HTTP Web Framework)
-- **Protocol** SSH (Crypto/SSH), WebSocket (Gorilla)
-- **Container** Docker & Docker Compose
-- **Architecture** Clean Architecture (Standard Go Layout)
+- **SSH-based Deployment**: 에이전트리스 방식의 보안 원격 명령어 실행 및 배포.
+- **Real-time Monitoring**: WebSocket 및 SSE를 활용한 실시간 로그 스트리밍 및 배포 상태 추적.
+- **Multi-project Management**: 하나의 대시보드에서 다중 서버 및 프로젝트 통합 관리.
+- **Git-based Rollback**: 배포 히스토리를 통한 즉각적인 이전 버전 복구 지원.
+- **Zero-downtime Approach**: Docker Compose 오케스트레이션을 통한 유연한 서비스 갱신.
 
-## 설치 및 실행 (Installation)
+<br/>
 
-### Docker 실행 (Recommended)
-가장 간편한 실행 방법. 설정 파일(`sship.yaml`)을 마운트하여 컨테이너 구동.
+## Quick Start
 
+1. 현재 디렉토리에 `sship.yaml` 파일 생성 및 설정.
+2. Docker 컨테이너 실행
 ```bash
 docker run -d \
   --name sship \
@@ -40,48 +41,35 @@ docker run -d \
   -v $(pwd)/sship.yaml:/app/sship.yaml \
   ghcr.io/lambda0x63/sship:latest
 ```
+3. `http://localhost:9999` 접속 후 배포 버튼 클릭.
 
-### 바이너리 실행 (Manual)
-직접 실행 파일 다운로드 및 구동.
+<br/>
 
-```bash
-curl -L https://github.com/lambda0x63/sship/releases/latest/download/sship-$(uname -s)-$(uname -m) -o sship
-chmod +x sship
-./sship
-```
+## Configuration (`sship.yaml`)
 
-## 설정 가이드 (Configuration)
+| Property | Type | Default | Description |
+|:---|:---:|:---:|:---|
+| `projects` | `map` | `{}` | 관리할 프로젝트 목록 |
+| `server.host` | `string` | `""` | 대상 서버 VPS 호스트 주소 |
+| `server.user` | `string` | `"root"` | SSH 접속 계정 |
+| `path` | `string` | `""` | 서버 내 프로젝트 작업 경로 |
+| `branch` | `string` | `"main"` | 배포 대상 Git 브랜치 |
+| `docker_compose` | `string` | `"docker-compose.prod.yml"` | 실행할 컴포즈 파일명 |
 
-`sship.yaml` 파일을 통해 관리할 프로젝트 정의.
+<br/>
 
-```yaml
-projects:
-  myapp:
-    # SSH 원격 접속 정보
-    server:
-      host: example.com
-      port: 22
-      user: root
-      password: ${SSH_PASSWORD} # 환경 변수 사용 권장
-    
-    # 배포 경로 및 설정
-    path: /root/myapp
-    branch: main
-    docker_compose: docker-compose.prod.yml
-    
-    # 옵션
-    health_check: http://localhost:8080/health
-```
+## Tech Stack
 
-## 개발 및 빌드 (Development)
+- **Backend**: Go 1.23 & Gin Web Framework.
+- **Frontend**: Tailwind CSS & Alpine.js (Lightweight UI).
+- **Orchestration**: Docker Compose & SSH (crypto/ssh).
+- **Communication**: WebSocket & SSE (Real-time updates).
 
-```bash
-# 의존성 설치
-go mod download
+<br/>
 
-# 서버 실행 (Dev Mode)
-go run ./cmd/web
+<hr/>
 
-# 프로덕션 빌드
-go build -o sship ./cmd/web
-```
+<div align="center">
+  <p>Produced by <b>lambda0x63</b></p>
+  <p><a href="LICENSE">MIT License</a></p>
+</div>

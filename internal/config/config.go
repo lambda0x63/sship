@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"sync"
+
 	"github.com/lambda0x63/sship/internal/ssh"
 	"gopkg.in/yaml.v3"
 )
@@ -41,6 +43,7 @@ type Project struct {
 
 type Config struct {
 	Projects map[string]Project `yaml:"projects"`
+	mu       sync.RWMutex
 	filePath string
 }
 
@@ -57,6 +60,10 @@ func LoadConfig(path string) (*Config, error) {
 
 	config.filePath = path
 
+	if config.Projects == nil {
+		config.Projects = make(map[string]Project)
+	}
+
 	for name, proj := range config.Projects {
 		if proj.Server.Port == 0 {
 			proj.Server.Port = 22
@@ -71,6 +78,40 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	return &config, nil
+}
+
+func (c *Config) GetProjects() map[string]Project {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	// 맵 복사본 반환 (외부 수정 방지)
+	projects := make(map[string]Project)
+	for k, v := range c.Projects {
+		projects[k] = v
+	}
+	return projects
+}
+
+func (c *Config) GetProject(name string) (Project, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	p, ok := c.Projects[name]
+	return p, ok
+}
+
+func (c *Config) SetProject(name string, p Project) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.Projects == nil {
+		c.Projects = make(map[string]Project)
+	}
+	c.Projects[name] = p
+}
+
+func (c *Config) DeleteProject(name string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.Projects, name)
 }
 
 func LoadServerConfig() (*ServerConfig, error) {
@@ -162,6 +203,9 @@ func ValidateConfig(projectName string) error {
 }
 
 func (c *Config) Save() error {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	if c.filePath == "" {
 		return fmt.Errorf("설정 파일 경로가 지정되지 않았습니다")
 	}

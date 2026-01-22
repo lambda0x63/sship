@@ -35,7 +35,7 @@ func NewDeployer(cfg *config.Config) *Deployer {
 }
 
 func (d *Deployer) Deploy(projectName string) error {
-	proj, exists := d.config.Projects[projectName]
+	proj, exists := d.config.GetProject(projectName)
 	if !exists {
 		return fmt.Errorf("프로젝트를 찾을 수 없습니다: %s", projectName)
 	}
@@ -62,7 +62,7 @@ func (d *Deployer) Deploy(projectName string) error {
 }
 
 func (d *Deployer) DeployWithProgress(projectName string, output io.Writer, progressChan chan<- DeployProgress) error {
-	proj, exists := d.config.Projects[projectName]
+	proj, exists := d.config.GetProject(projectName)
 	if !exists {
 		return fmt.Errorf("프로젝트를 찾을 수 없습니다: %s", projectName)
 	}
@@ -105,7 +105,7 @@ func (d *Deployer) DeployWithProgress(projectName string, output io.Writer, prog
 	if proj.HealthCheck != "" {
 		progressChan <- DeployProgress{Step: "health", Message: "서비스 헬스체크", Status: "active"}
 		time.Sleep(5 * time.Second)
-		
+
 		fmt.Fprintf(output, "🔍 헬스체크 시작: %s\n", proj.HealthCheck)
 		progressChan <- DeployProgress{Step: "health", Message: "서비스 헬스체크", Status: "completed"}
 	}
@@ -117,7 +117,7 @@ func (d *Deployer) DeployWithProgress(projectName string, output io.Writer, prog
 }
 
 func (d *Deployer) GetStatus(projectName string) (string, error) {
-	proj, exists := d.config.Projects[projectName]
+	proj, exists := d.config.GetProject(projectName)
 	if !exists {
 		return "", fmt.Errorf("프로젝트를 찾을 수 없습니다: %s", projectName)
 	}
@@ -132,7 +132,7 @@ func (d *Deployer) GetStatus(projectName string) (string, error) {
 }
 
 func (d *Deployer) GetLogs(projectName string, lines string) (string, error) {
-	proj, exists := d.config.Projects[projectName]
+	proj, exists := d.config.GetProject(projectName)
 	if !exists {
 		return "", fmt.Errorf("프로젝트를 찾을 수 없습니다: %s", projectName)
 	}
@@ -147,7 +147,7 @@ func (d *Deployer) GetLogs(projectName string, lines string) (string, error) {
 }
 
 func (d *Deployer) GetEnvironmentVariables(projectName string) (map[string]string, error) {
-	proj, exists := d.config.Projects[projectName]
+	proj, exists := d.config.GetProject(projectName)
 	if !exists {
 		return nil, fmt.Errorf("프로젝트를 찾을 수 없습니다: %s", projectName)
 	}
@@ -162,7 +162,7 @@ func (d *Deployer) GetEnvironmentVariables(projectName string) (map[string]strin
 }
 
 func (d *Deployer) Rollback(projectName string) error {
-	proj, exists := d.config.Projects[projectName]
+	proj, exists := d.config.GetProject(projectName)
 	if !exists {
 		return fmt.Errorf("프로젝트를 찾을 수 없습니다: %s", projectName)
 	}

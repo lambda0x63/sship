@@ -32,7 +32,7 @@ func NewPreDeployValidator(cfg *config.Config) *PreDeployValidator {
 }
 
 func (v *PreDeployValidator) Validate(projectName string) (*ValidationResult, error) {
-	proj, exists := v.config.Projects[projectName]
+	proj, exists := v.config.GetProject(projectName)
 	if !exists {
 		return nil, fmt.Errorf("프로젝트를 찾을 수 없습니다: %s", projectName)
 	}
@@ -115,7 +115,7 @@ func (v *PreDeployValidator) checkSSHConnection(client *ssh.Client) CheckResult 
 func (v *PreDeployValidator) checkGitRepository(client *ssh.Client, projectPath string) CheckResult {
 	command := fmt.Sprintf("cd %s && git status --porcelain 2>&1", projectPath)
 	output, err := client.ExecuteCommand(command)
-	
+
 	if err != nil {
 		if strings.Contains(err.Error(), "not a git repository") {
 			return CheckResult{
@@ -235,7 +235,7 @@ func (v *PreDeployValidator) checkDiskSpace(client *ssh.Client, projectPath stri
 func (v *PreDeployValidator) checkPortAvailability(client *ssh.Client, port int) CheckResult {
 	command := fmt.Sprintf("lsof -i:%d > /dev/null 2>&1", port)
 	_, err := client.ExecuteCommand(command)
-	
+
 	if err != nil {
 		return CheckResult{
 			Name:    "포트 확인",
